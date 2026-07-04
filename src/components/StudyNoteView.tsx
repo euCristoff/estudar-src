@@ -22,7 +22,9 @@ import {
   ChevronRight,
   Send,
   Loader2,
-  ListRestart
+  ListRestart,
+  Plus,
+  Trash2
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -83,6 +85,104 @@ export default function StudyNoteView({ note, onBack, onUpdateNote, onRecordQuiz
   const [intervalGood, setIntervalGood] = useState<number>(180);
   const [intervalEasy, setIntervalEasy] = useState<number>(600);
   const [showIntervalSettings, setShowIntervalSettings] = useState<boolean>(false);
+
+  // Custom Flashcards Creation States
+  const [newFcFront, setNewFcFront] = useState("");
+  const [newFcBack, setNewFcBack] = useState("");
+  const [newFcCanQuiz, setNewFcCanQuiz] = useState(true);
+  const [showCreateFcForm, setShowCreateFcForm] = useState(false);
+
+  // Add custom flashcard function
+  const handleAddCustomFlashcard = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newFcFront.trim() || !newFcBack.trim()) return;
+
+    const newFc: Flashcard = {
+      id: `fc-custom-${Date.now()}`,
+      front: newFcFront.trim(),
+      back: newFcBack.trim(),
+      box: 1,
+      nextReviewDate: new Date().toISOString(),
+      canAppearInQuiz: newFcCanQuiz
+    };
+
+    const updatedList = [...flashcardsList, newFc];
+    setFlashcardsList(updatedList);
+
+    onUpdateNote({
+      ...note,
+      flashcards: updatedList
+    });
+
+    setNewFcFront("");
+    setNewFcBack("");
+    setNewFcCanQuiz(true);
+    setShowCreateFcForm(false);
+  };
+
+  // Delete flashcard function
+  const handleDeleteFlashcard = (fcId: string) => {
+    const updatedList = flashcardsList.filter(fc => fc.id !== fcId);
+    setFlashcardsList(updatedList);
+    onUpdateNote({
+      ...note,
+      flashcards: updatedList
+    });
+    if (currentFcIndex >= updatedList.length) {
+      setCurrentFcIndex(Math.max(0, updatedList.length - 1));
+    }
+    setIsFcFlipped(false);
+  };
+
+  // Memoized Quiz combination: appends custom flashcards that have canAppearInQuiz enabled
+  const combinedQuiz = React.useMemo(() => {
+    const baseQuiz = [...(note.quiz || [])];
+    const quizEnabledCustomFcs = flashcardsList.filter(fc => fc.canAppearInQuiz);
+
+    if (quizEnabledCustomFcs.length === 0) return baseQuiz;
+
+    const customQuestions: QuizQuestion[] = quizEnabledCustomFcs.map((fc) => {
+      // Find other card backs as distractors
+      const otherBacks = flashcardsList
+        .filter(other => other.id !== fc.id)
+        .map(other => other.back);
+
+      const uniqueOtherBacks = Array.from(new Set(otherBacks))
+        .sort(() => 0.5 - Math.random())
+        .slice(0, 3);
+
+      while (uniqueOtherBacks.length < 3) {
+        const fallbacks = [
+          "Definição incorreta elaborada a partir de conceitos adjacentes.",
+          "Explicação inapropriada para o termo em questão.",
+          "Opção incorreta gerada para fins de fixação de conteúdo.",
+          "Nenhuma das opções anteriores está correta para este tema."
+        ];
+        const randomFallback = fallbacks[Math.floor(Math.random() * fallbacks.length)];
+        if (!uniqueOtherBacks.includes(randomFallback)) {
+          uniqueOtherBacks.push(randomFallback);
+        }
+      }
+
+      const options = [fc.back, ...uniqueOtherBacks];
+      // Shuffle options and find the correct index
+      const shuffled = options
+        .map((opt, i) => ({ opt, isCorrect: i === 0 }))
+        .sort(() => 0.5 - Math.random());
+
+      const correctOptionIndex = shuffled.findIndex(item => item.isCorrect);
+      const finalOptions = shuffled.map(item => item.opt);
+
+      return {
+        question: `[Flashcard do Aluno] ${fc.front}`,
+        options: finalOptions,
+        correctOptionIndex: correctOptionIndex,
+        explanation: `Pergunta extraída do seu flashcard personalizado. A resposta correta é: ${fc.back}.`
+      };
+    });
+
+    return [...baseQuiz, ...customQuestions];
+  }, [note.quiz, flashcardsList]);
 
   // Format interval minutes into a friendly string (e.g., 2m, 30m, 3h, 10h, 2d)
   const formatInterval = (mins: number): string => {
@@ -698,9 +798,19 @@ export default function StudyNoteView({ note, onBack, onUpdateNote, onRecordQuiz
                 {/* Score tracker */}
                 <div className="flex items-center justify-between text-xs px-2">
                   <span className="font-semibold text-slate-600">Flashcard {currentFcIndex + 1} de {flashcardsList.length}</span>
-                  <span className="font-mono bg-blue-50 text-blue-600 px-2 py-0.5 rounded-sm font-bold">
-                    Box {flashcardsList[currentFcIndex]?.box || 1}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono bg-blue-50 text-blue-600 px-2.5 py-1 rounded-lg font-bold">
+                      Box {flashcardsList[currentFcIndex]?.box || 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteFlashcard(flashcardsList[currentFcIndex].id)}
+                      title="Excluir este flashcard"
+                      className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg transition-all cursor-pointer flex items-center justify-center border border-transparent hover:border-red-100"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Card Container with Flip animation */}
@@ -868,6 +978,94 @@ export default function StudyNoteView({ note, onBack, onUpdateNote, onRecordQuiz
                 </div>
               </div>
             )}
+
+            {/* Custom Flashcard Creator Panel */}
+            <div className="border-t border-slate-100 pt-6 mt-6">
+              {!showCreateFcForm ? (
+                <button
+                  type="button"
+                  onClick={() => setShowCreateFcForm(true)}
+                  className="w-full py-3 border border-dashed border-blue-200 hover:border-blue-400 bg-blue-50/10 hover:bg-blue-50/40 text-blue-600 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs"
+                >
+                  <Plus className="w-4 h-4" />
+                  Criar Novo Flashcard Personalizado
+                </button>
+              ) : (
+                <form onSubmit={handleAddCustomFlashcard} className="bg-white border border-slate-150 p-5 rounded-3xl shadow-sm space-y-4 animate-fadeIn">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-50">
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5 font-sans">
+                      <Sparkles className="w-4 h-4 text-blue-500" />
+                      Novo Flashcard Personalizado
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateFcForm(false)}
+                      className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-extrabold text-slate-500 uppercase font-sans">Frente / Pergunta</label>
+                    <textarea
+                      required
+                      rows={2}
+                      value={newFcFront}
+                      onChange={(e) => setNewFcFront(e.target.value)}
+                      placeholder="Ex: Qual é o principal evento que desencadeou a Primeira Guerra Mundial?"
+                      className="w-full p-3 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500 bg-slate-50/30 focus:bg-white transition-all resize-none font-sans"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-extrabold text-slate-500 uppercase font-sans">Verso / Resposta</label>
+                    <textarea
+                      required
+                      rows={2}
+                      value={newFcBack}
+                      onChange={(e) => setNewFcBack(e.target.value)}
+                      placeholder="Ex: O assassinato do Arquiduque Francisco Ferdinando em Sarajevo em 1914."
+                      className="w-full p-3 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500 bg-slate-50/30 focus:bg-white transition-all resize-none font-sans"
+                    />
+                  </div>
+
+                  {/* Option "Possibilidade de cair na prova" */}
+                  <div className="flex items-center justify-between p-3 bg-slate-50/50 border border-slate-100 rounded-2xl">
+                    <div className="space-y-0.5 pr-2">
+                      <p className="text-xs font-bold text-slate-700 font-sans">Cair na Prova/Simulado?</p>
+                      <p className="text-[10px] text-slate-400 font-sans">Ao ativar, esta pergunta poderá aparecer de forma objetiva no seu Quiz de Prática!</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={newFcCanQuiz}
+                        onChange={(e) => setNewFcCanQuiz(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateFcForm(false)}
+                      className="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl text-xs font-semibold cursor-pointer transition-all font-sans"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1 cursor-pointer shadow-xs transition-all font-sans"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Salvar Flashcard
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
           </div>
         )}
 
@@ -930,21 +1128,21 @@ export default function StudyNoteView({ note, onBack, onUpdateNote, onRecordQuiz
             <div className="lg:col-span-3">
               
               {/* Option A: QUIZ DE ALTERNATIVAS */}
-              {practiceSubTab === "quiz" && note.quiz && note.quiz.length > 0 && (
+              {practiceSubTab === "quiz" && combinedQuiz && combinedQuiz.length > 0 && (
                 <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-2xs space-y-5">
                   <div className="flex items-center justify-between text-xs pb-3 border-b border-slate-100">
-                    <span className="font-bold text-blue-600">Questão {selectedQuizIndex + 1} de {note.quiz.length}</span>
+                    <span className="font-bold text-blue-600">Questão {selectedQuizIndex + 1} de {combinedQuiz.length}</span>
                     <span className="font-semibold text-slate-400">Objetiva</span>
                   </div>
 
                   <p className="font-bold text-sm text-slate-800 leading-relaxed font-sans">
-                    {note.quiz[selectedQuizIndex].question}
+                    {combinedQuiz[selectedQuizIndex].question}
                   </p>
 
                   <div className="space-y-2.5">
-                    {note.quiz[selectedQuizIndex].options.map((opt, i) => {
+                    {combinedQuiz[selectedQuizIndex].options.map((opt, i) => {
                       const isSelected = selectedOption === i;
-                      const isCorrect = i === note.quiz[selectedQuizIndex].correctOptionIndex;
+                      const isCorrect = i === combinedQuiz[selectedQuizIndex].correctOptionIndex;
                       
                       let optionStyle = "border-slate-200 bg-white hover:bg-slate-50";
                       
@@ -978,7 +1176,7 @@ export default function StudyNoteView({ note, onBack, onUpdateNote, onRecordQuiz
                   <div className="pt-4 border-t border-slate-50 flex items-center justify-between gap-4">
                     {!quizChecked ? (
                       <button
-                        onClick={() => checkQuizAnswer(note.quiz[selectedQuizIndex], selectedQuizIndex)}
+                        onClick={() => checkQuizAnswer(combinedQuiz[selectedQuizIndex], selectedQuizIndex)}
                         disabled={selectedOption === null}
                         className="px-5 h-10 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-all ml-auto flex items-center gap-1 cursor-pointer"
                       >
@@ -988,10 +1186,10 @@ export default function StudyNoteView({ note, onBack, onUpdateNote, onRecordQuiz
                       <div className="w-full space-y-4">
                         <div className="p-4 rounded-2xl text-xs leading-relaxed bg-slate-50 border border-slate-100 text-slate-600">
                           <p className="font-bold text-slate-800 mb-1">Explicação do Professor:</p>
-                          <p>{note.quiz[selectedQuizIndex].explanation}</p>
+                          <p>{combinedQuiz[selectedQuizIndex].explanation}</p>
                         </div>
                         <button
-                          onClick={() => nextQuizQuestion(note.quiz.length)}
+                          onClick={() => nextQuizQuestion(combinedQuiz.length)}
                           className="px-5 h-10 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all ml-auto block cursor-pointer"
                         >
                           Próxima Questão

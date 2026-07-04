@@ -9,6 +9,7 @@ export interface Flashcard {
   back: string;
   box: number; // For spaced repetition (Leitner system Box 1-5)
   nextReviewDate: string; // ISO string
+  canAppearInQuiz?: boolean; // Possibilidade de cair na prova/simulados
 }
 
 export interface QuizQuestion {
