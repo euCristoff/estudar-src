@@ -704,29 +704,39 @@ export default function Library({ notes, onOpenNote, onDeleteNote, onUpdateNote,
 
                     {/* List of uploaded files */}
                     {uploadedFiles.length > 0 && (
-                      <div className="mt-2 space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
-                        {uploadedFiles.map((file) => (
-                          <div 
-                            key={file.id} 
-                            className="flex items-center justify-between p-2 bg-slate-50 border border-slate-100 rounded-xl text-xs"
-                          >
-                            <div className="flex items-center gap-2 truncate flex-1 mr-2">
-                              {file.mimeType.includes("pdf") ? (
-                                <FileDown className="w-4 h-4 text-red-500 shrink-0" />
-                              ) : (
-                                <FileText className="w-4 h-4 text-blue-500 shrink-0" />
-                              )}
-                              <span className="font-semibold text-slate-700 truncate">{file.name}</span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); removeUploadedFile(file.id); }}
-                              className="p-1 hover:bg-slate-200 rounded-full text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
+                      <div className="space-y-1.5 mt-2">
+                        <div className="max-h-[160px] overflow-y-auto pr-1 space-y-1.5">
+                          {uploadedFiles.map((file) => (
+                            <div 
+                              key={file.id} 
+                              className="flex items-center justify-between p-2 bg-slate-50 border border-slate-100 rounded-xl text-xs"
                             >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        ))}
+                              <div className="flex items-center gap-2 truncate flex-1 mr-2">
+                                {file.mimeType.includes("pdf") ? (
+                                  <FileDown className="w-4 h-4 text-red-500 shrink-0" />
+                                ) : (
+                                  <FileText className="w-4 h-4 text-blue-500 shrink-0" />
+                                )}
+                                <span className="font-semibold text-slate-700 truncate">{file.name}</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); removeUploadedFile(file.id); }}
+                                className="p-1 hover:bg-slate-200 rounded-full text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="w-full flex items-center justify-center gap-2 p-2.5 border border-dashed border-blue-200 hover:border-blue-400 bg-blue-50/20 hover:bg-blue-50/50 text-blue-600 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Adicionar mais fotos / PDFs
+                        </button>
                       </div>
                     )}
 
