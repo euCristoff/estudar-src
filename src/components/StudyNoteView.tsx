@@ -77,23 +77,52 @@ export default function StudyNoteView({ note, onBack, onUpdateNote, onRecordQuiz
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
 
-  // Flashcard response handler (Leitner Leitão box manager)
-  const handleFlashcardRating = (remembered: boolean) => {
+  // Spaced Repetition Custom Intervals State (in minutes)
+  const [intervalAgain, setIntervalAgain] = useState<number>(2);
+  const [intervalHard, setIntervalHard] = useState<number>(30);
+  const [intervalGood, setIntervalGood] = useState<number>(180);
+  const [intervalEasy, setIntervalEasy] = useState<number>(600);
+  const [showIntervalSettings, setShowIntervalSettings] = useState<boolean>(false);
+
+  // Format interval minutes into a friendly string (e.g., 2m, 30m, 3h, 10h, 2d)
+  const formatInterval = (mins: number): string => {
+    if (mins < 60) return `${mins}m`;
+    const hours = Math.round((mins / 60) * 10) / 10;
+    if (hours < 24) return `${hours}h`;
+    const days = Math.round((hours / 24) * 10) / 10;
+    return `${days}d`;
+  };
+
+  // Flashcard response handler (Anki spaced repetition manager)
+  const handleFlashcardRating = (rating: "again" | "hard" | "good" | "easy") => {
     const list = [...flashcardsList];
     const currentFc = { ...list[currentFcIndex] };
+    const oldBox = currentFc.box || 1;
+    let newBox = oldBox;
+    let minsToAdd = 2;
 
-    // Update box (Leitner 1 to 5)
-    if (remembered) {
-      currentFc.box = Math.min(5, currentFc.box + 1);
-    } else {
-      currentFc.box = 1; // back to start
+    switch (rating) {
+      case "again":
+        newBox = 1;
+        minsToAdd = intervalAgain;
+        break;
+      case "hard":
+        newBox = Math.max(1, oldBox - 1);
+        minsToAdd = intervalHard;
+        break;
+      case "good":
+        newBox = Math.min(5, oldBox + 1);
+        minsToAdd = intervalGood;
+        break;
+      case "easy":
+        newBox = Math.min(5, oldBox + 2);
+        minsToAdd = intervalEasy;
+        break;
     }
 
-    // Set next review interval in days based on box
-    const intervals: Record<number, number> = { 1: 1, 2: 3, 3: 7, 4: 15, 5: 30 };
-    const daysToAdd = intervals[currentFc.box] || 1;
+    currentFc.box = newBox;
     const reviewDate = new Date();
-    reviewDate.setDate(reviewDate.getDate() + daysToAdd);
+    reviewDate.setMinutes(reviewDate.getMinutes() + minsToAdd);
     currentFc.nextReviewDate = reviewDate.toISOString();
 
     list[currentFcIndex] = currentFc;
@@ -726,28 +755,117 @@ export default function StudyNoteView({ note, onBack, onUpdateNote, onRecordQuiz
                   </motion.div>
                 </div>
 
-                {/* Rating buttons */}
-                <div className="flex items-center gap-4">
+                 {/* Rating buttons */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <button
-                    onClick={() => handleFlashcardRating(false)}
-                    className="flex-1 h-11 bg-red-50 hover:bg-red-100 border border-red-100 text-red-700 text-xs font-bold rounded-2xl transition-all flex items-center justify-center gap-2"
+                    onClick={(e) => { e.stopPropagation(); handleFlashcardRating('again'); }}
+                    className="h-14 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 rounded-2xl transition-all flex flex-col items-center justify-center cursor-pointer shadow-2xs group"
                   >
-                    <X className="w-4 h-4" />
-                    Errei / Esqueci
+                    <span className="text-xs font-extrabold font-sans">Errei</span>
+                    <span className="text-[10px] text-red-500 font-mono font-bold mt-0.5">{formatInterval(intervalAgain)}</span>
                   </button>
                   <button
-                    onClick={() => handleFlashcardRating(true)}
-                    className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-2xl transition-all flex items-center justify-center gap-2 shadow-sm"
+                    onClick={(e) => { e.stopPropagation(); handleFlashcardRating('hard'); }}
+                    className="h-14 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 rounded-2xl transition-all flex flex-col items-center justify-center cursor-pointer shadow-2xs group"
                   >
-                    <Check className="w-4 h-4" />
-                    Acertei / Lembrei
+                    <span className="text-xs font-extrabold font-sans">Difícil</span>
+                    <span className="text-[10px] text-amber-600 font-mono font-bold mt-0.5">{formatInterval(intervalHard)}</span>
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleFlashcardRating('good'); }}
+                    className="h-14 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-2xl transition-all flex flex-col items-center justify-center cursor-pointer shadow-2xs group"
+                  >
+                    <span className="text-xs font-extrabold font-sans">Bom</span>
+                    <span className="text-[10px] text-emerald-600 font-mono font-bold mt-0.5">{formatInterval(intervalGood)}</span>
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleFlashcardRating('easy'); }}
+                    className="h-14 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 rounded-2xl transition-all flex flex-col items-center justify-center cursor-pointer shadow-2xs group"
+                  >
+                    <span className="text-xs font-extrabold font-sans">Fácil</span>
+                    <span className="text-[10px] text-blue-600 font-mono font-bold mt-0.5">{formatInterval(intervalEasy)}</span>
                   </button>
                 </div>
 
-                {/* Spaced repetition description text */}
-                <p className="text-[10px] text-slate-400 text-center font-sans">
-                  *Acertar empurra esta carta para uma caixa de repetição mais alta, espaçando mais as revisões. Errar volta a carta para a Caixa 1.
-                </p>
+                {/* Spaced repetition description text & settings toggle */}
+                <div className="flex flex-col items-center gap-2">
+                  <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                    <p className="text-[10px] text-slate-400 text-center font-sans">
+                      *Sistema de repetição espaçada integrado (Estilo Anki).
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setShowIntervalSettings(!showIntervalSettings)}
+                      className="text-[10px] text-blue-600 font-bold hover:underline cursor-pointer flex items-center gap-0.5"
+                    >
+                      {showIntervalSettings ? "Ocultar Ajustes" : "Personalizar Tempos"}
+                    </button>
+                  </div>
+
+                  {showIntervalSettings && (
+                    <div className="w-full bg-slate-50 border border-slate-100 p-3 rounded-2xl animate-fadeIn space-y-2">
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">
+                        Personalizar Tempos (em minutos)
+                      </p>
+                      <div className="grid grid-cols-4 gap-2">
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold text-red-500 block text-center">Errei</label>
+                          <input 
+                            type="number" 
+                            min="1"
+                            value={intervalAgain}
+                            onChange={(e) => setIntervalAgain(Math.max(1, parseInt(e.target.value) || 1))}
+                            className="w-full p-1 text-center text-xs font-mono border border-slate-200 rounded-lg focus:outline-none focus:border-red-500 bg-white"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold text-amber-600 block text-center">Difícil</label>
+                          <input 
+                            type="number" 
+                            min="1"
+                            value={intervalHard}
+                            onChange={(e) => setIntervalHard(Math.max(1, parseInt(e.target.value) || 1))}
+                            className="w-full p-1 text-center text-xs font-mono border border-slate-200 rounded-lg focus:outline-none focus:border-amber-500 bg-white"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold text-emerald-600 block text-center">Bom</label>
+                          <input 
+                            type="number" 
+                            min="1"
+                            value={intervalGood}
+                            onChange={(e) => setIntervalGood(Math.max(1, parseInt(e.target.value) || 1))}
+                            className="w-full p-1 text-center text-xs font-mono border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500 bg-white"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold text-blue-600 block text-center">Fácil</label>
+                          <input 
+                            type="number" 
+                            min="1"
+                            value={intervalEasy}
+                            onChange={(e) => setIntervalEasy(Math.max(1, parseInt(e.target.value) || 1))}
+                            className="w-full p-1 text-center text-xs font-mono border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 bg-white"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-center">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIntervalAgain(2);
+                            setIntervalHard(30);
+                            setIntervalGood(180);
+                            setIntervalEasy(600);
+                          }}
+                          className="text-[9px] bg-slate-200 hover:bg-slate-300 text-slate-600 px-2 py-0.5 rounded-md font-bold cursor-pointer transition-all"
+                        >
+                          Resetar para Padrão (2m, 30m, 3h, 10h)
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>

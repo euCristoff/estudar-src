@@ -62,7 +62,7 @@ app.get("/api/health", (req, res) => {
 // API endpoint to generate study notes
 app.post("/api/generate-study", async (req, res) => {
   try {
-    const { image, mimeType, subject, topic } = req.body;
+    const { image, mimeType, images, subject, topic } = req.body;
 
     if (!process.env.GEMINI_API_KEY) {
       return res.status(500).json({
@@ -73,7 +73,33 @@ app.post("/api/generate-study", async (req, res) => {
     let contents: any[] = [];
     let promptText = "";
 
-    if (image && mimeType) {
+    if (images && Array.isArray(images) && images.length > 0) {
+      promptText = `Analise as imagens ou documentos PDF enviados (no total de ${images.length} arquivos). Identifique o texto e o assunto principal de todos eles de forma integrada.
+Selecione a matéria correspondente, preferencialmente: ${subject || "Identificar automaticamente"}.
+Crie um resumo e uma explicação detalhada estruturada em três níveis (Básico, Intermediário e Avançado) unindo o conteúdo de todos esses arquivos de maneira fluida.
+Destaque as palavras importantes com suas definições.
+Gere um mapa mental com nós conectados (nodes e edges).
+Crie pelo menos 5 flashcards dinâmicos de pergunta/resposta.
+Crie um quiz com 4 perguntas objetivas (4 alternativas cada) e uma explicação de cada resposta.
+Crie 3 perguntas discursivas com respostas sugeridas.
+Crie 3 desafios no estilo de provas difíceis.
+Crie 3 questões no estilo do ENEM/Vestibular (questões longas, com texto de apoio, enunciados contextualizados e alternativas).
+Crie diagramas visuais estruturados em formato de texto/ASCII que facilitem a compreensão (por exemplo, fluxos, tabelas conceituais ou árvores).
+Gere pelo menos 3 curiosidades e 3 exemplos práticos do cotidiano relacionados ao assunto.
+Gere 4 ou 5 tags úteis.
+Preencha tudo rigorosamente no formato JSON especificado.`;
+
+      for (const img of images) {
+        if (img.base64 && img.mimeType) {
+          contents.push({
+            inlineData: {
+              mimeType: img.mimeType,
+              data: img.base64,
+            },
+          });
+        }
+      }
+    } else if (image && mimeType) {
       promptText = `Analise a imagem ou documento PDF enviado. Identifique o texto e o assunto principal.
 Selecione a matéria correspondente, preferencialmente: ${subject || "Identificar automaticamente"}.
 Crie um resumo e uma explicação detalhada estruturada em três níveis (Básico, Intermediário e Avançado).

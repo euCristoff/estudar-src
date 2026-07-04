@@ -59,9 +59,16 @@ export default function Library({ notes, onOpenNote, onDeleteNote, onUpdateNote,
   const [isGeneratingModalOpen, setIsGeneratingModalOpen] = useState(false);
   const [uploadSubject, setUploadSubject] = useState("Biologia");
   const [uploadTopic, setUploadTopic] = useState("");
-  const [fileBase64, setFileBase64] = useState<string | null>(null);
-  const [fileMime, setFileMime] = useState<string | null>(null);
-  const [fileName, setFileName] = useState<string | null>(null);
+  
+  // Multiple Uploaded Files
+  interface UploadedFile {
+    id: string;
+    name: string;
+    base64: string;
+    mimeType: string;
+  }
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [loaderPhraseIndex, setLoaderPhraseIndex] = useState(0);
@@ -95,29 +102,46 @@ export default function Library({ notes, onOpenNote, onDeleteNote, onUpdateNote,
     }
   };
 
-  // Convert uploaded file to Base64
+  // Convert uploaded files to Base64 and append
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    setFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      // Get raw base64 data without data:image/png;base64, prefix
-      const base64Data = result.split(",")[1];
-      setFileBase64(base64Data);
-      setFileMime(file.type);
-    };
-    reader.onerror = (error) => {
-      console.error("Erro ao ler o arquivo:", error);
-    };
-    reader.readAsDataURL(file);
+    (Array.from(files) as File[]).forEach((file: File) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Get raw base64 data without data:image/png;base64, prefix
+        const base64Data = result.split(",")[1];
+        
+        setUploadedFiles(prev => [
+          ...prev,
+          {
+            id: `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            name: file.name,
+            base64: base64Data,
+            mimeType: file.type
+          }
+        ]);
+      };
+      reader.onerror = (error) => {
+        console.error("Erro ao ler o arquivo:", error);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const removeUploadedFile = (id: string) => {
+    setUploadedFiles(prev => prev.filter(f => f.id !== id));
   };
 
   const triggerGenerateNote = async () => {
-    if (!fileBase64 && !uploadTopic.trim()) {
-      setGenerationError("Por favor, envie um arquivo ou digite um tópico/texto para estudo.");
+    if (uploadedFiles.length === 0 && !uploadTopic.trim()) {
+      setGenerationError("Por favor, envie pelo menos um arquivo ou digite um tópico/texto para estudo.");
       return;
     }
 
@@ -130,8 +154,7 @@ export default function Library({ notes, onOpenNote, onDeleteNote, onUpdateNote,
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          image: fileBase64,
-          mimeType: fileMime,
+          images: uploadedFiles.map(f => ({ base64: f.base64, mimeType: f.mimeType })),
           subject: uploadSubject,
           topic: uploadTopic
         })
@@ -164,9 +187,7 @@ export default function Library({ notes, onOpenNote, onDeleteNote, onUpdateNote,
       setIsGeneratingModalOpen(false);
       
       // Reset inputs
-      setFileBase64(null);
-      setFileMime(null);
-      setFileName(null);
+      setUploadedFiles([]);
       setUploadTopic("");
       onOpenNote(newNote.id);
     } catch (err: any) {
@@ -195,17 +216,25 @@ export default function Library({ notes, onOpenNote, onDeleteNote, onUpdateNote,
     e.stopPropagation();
     setDragActive(false);
 
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      setFileName(file.name);
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        const base64Data = result.split(",")[1];
-        setFileBase64(base64Data);
-        setFileMime(file.type);
-      };
-      reader.readAsDataURL(file);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      (Array.from(e.dataTransfer.files) as File[]).forEach((file: File) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          const base64Data = result.split(",")[1];
+          
+          setUploadedFiles(prev => [
+            ...prev,
+            {
+              id: `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              name: file.name,
+              base64: base64Data,
+              mimeType: file.type
+            }
+          ]);
+        };
+        reader.readAsDataURL(file);
+      });
     }
   };
 
@@ -628,9 +657,20 @@ export default function Library({ notes, onOpenNote, onDeleteNote, onUpdateNote,
 
                     {/* Drag and Drop Upload */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block">
-                        Foto da Apostila, Caderno ou Arquivo PDF
-                      </label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block">
+                          Foto da Apostila, Caderno ou Arquivo PDF ({uploadedFiles.length})
+                        </label>
+                        {uploadedFiles.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setUploadedFiles([])}
+                            className="text-[10px] text-red-500 font-extrabold hover:underline cursor-pointer"
+                          >
+                            Limpar Tudo
+                          </button>
+                        )}
+                      </div>
                       
                       <div
                         onDragEnter={handleDrag}
@@ -648,38 +688,47 @@ export default function Library({ notes, onOpenNote, onDeleteNote, onUpdateNote,
                           ref={fileInputRef}
                           type="file"
                           accept="image/*,application/pdf"
+                          multiple
                           onChange={handleFileChange}
                           className="hidden"
                         />
-                        {fileName ? (
-                          <div className="space-y-2">
-                             <div className="p-3 bg-blue-50 text-blue-600 rounded-xl w-fit mx-auto">
-                              {fileMime?.includes("pdf") ? (
-                                <FileDown className="w-8 h-8" />
-                              ) : (
-                                <FileText className="w-8 h-8" />
-                              )}
-                            </div>
-                            <p className="text-xs font-bold text-slate-700 truncate max-w-[250px] mx-auto">{fileName}</p>
-                            <button 
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); setFileBase64(null); setFileName(null); setFileMime(null); }}
-                              className="text-[10px] text-red-500 font-bold hover:underline"
-                            >
-                              Remover Arquivo
-                            </button>
+                        <div className="space-y-2">
+                          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl w-fit mx-auto">
+                            <Upload className="w-6 h-6" />
                           </div>
-                        ) : (
-                          <div className="space-y-2">
-                            <div className="p-3 bg-slate-100 text-slate-400 rounded-xl w-fit mx-auto">
-                              <Upload className="w-6 h-6" />
-                            </div>
-                            <p className="text-xs font-bold text-slate-600">Arraste ou clique para enviar foto ou PDF</p>
-                            <p className="text-[10px] text-slate-400">PDFs e Imagens suportados (máx. 10MB)</p>
-                          </div>
-                        )}
+                          <p className="text-xs font-bold text-slate-600">Arraste ou clique para adicionar fotos ou PDFs</p>
+                          <p className="text-[10px] text-slate-400">Pode selecionar várias fotos juntas ou colocar mais depois</p>
+                        </div>
                       </div>
                     </div>
+
+                    {/* List of uploaded files */}
+                    {uploadedFiles.length > 0 && (
+                      <div className="mt-2 space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
+                        {uploadedFiles.map((file) => (
+                          <div 
+                            key={file.id} 
+                            className="flex items-center justify-between p-2 bg-slate-50 border border-slate-100 rounded-xl text-xs"
+                          >
+                            <div className="flex items-center gap-2 truncate flex-1 mr-2">
+                              {file.mimeType.includes("pdf") ? (
+                                <FileDown className="w-4 h-4 text-red-500 shrink-0" />
+                              ) : (
+                                <FileText className="w-4 h-4 text-blue-500 shrink-0" />
+                              )}
+                              <span className="font-semibold text-slate-700 truncate">{file.name}</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); removeUploadedFile(file.id); }}
+                              className="p-1 hover:bg-slate-200 rounded-full text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
                     {/* Or Text Input */}
                     <div className="space-y-1.5">
