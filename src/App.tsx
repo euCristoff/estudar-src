@@ -25,7 +25,9 @@ import {
   User,
   Shield,
   Edit3,
-  Check
+  Check,
+  Copy,
+  ExternalLink
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -45,12 +47,32 @@ export default function App() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(studentName);
   const [showAccountModal, setShowAccountModal] = useState(false);
+  const [modalTab, setModalTab] = useState<"info" | "sync">("info");
+
+  // Global non-blocking Toast notification state
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
+  const [pasteInputCode, setPasteInputCode] = useState("");
+
+  const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
+    setToast({ message, type });
+  };
+
+  // Toast auto-clear effect
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => {
+        setToast(null);
+      }, 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   const handleSaveName = () => {
     const trimmed = nameInput.trim();
     if (trimmed) {
       setStudentName(trimmed);
       localStorage.setItem("estudaia_student_name", trimmed);
+      showToast("Nome de estudante atualizado!", "success");
     }
     setIsEditingName(false);
   };
@@ -151,20 +173,26 @@ export default function App() {
 
   // Export backup JSON
   const handleExportBackup = () => {
-    const backupData = {
-      notes,
-      stats,
-      onboarding,
-      version: "1.0",
-      exportedAt: new Date().toISOString()
-    };
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
-    const downloadAnchor = document.createElement("a");
-    downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `estudaia_backup_${new Date().toISOString().slice(0, 10)}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
+    try {
+      const backupData = {
+        notes,
+        stats,
+        onboarding,
+        version: "1.0",
+        exportedAt: new Date().toISOString()
+      };
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+      const downloadAnchor = document.createElement("a");
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `estudaia_backup_${new Date().toISOString().slice(0, 10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast("Arquivo de backup .json baixado com sucesso!", "success");
+    } catch (e) {
+      console.error(e);
+      showToast("Erro ao exportar arquivo de backup.", "error");
+    }
   };
 
   // Import backup JSON
@@ -185,12 +213,73 @@ export default function App() {
             setOnboarding(parsed.onboarding);
             localStorage.setItem("estudaia_onboarding_v4", JSON.stringify(parsed.onboarding));
           }
+          showToast("Progresso importado do arquivo .json com sucesso!", "success");
+        } else {
+          showToast("O arquivo não parece um backup do EstudaIA válido.", "error");
         }
       } catch (err) {
         console.error("Erro ao ler arquivo de backup", err);
+        showToast("Erro ao ler arquivo JSON de backup.", "error");
       }
     };
     fileReader.readAsText(file);
+  };
+
+  // Copy backup as Base64 code string (excellent for mobile or crossing preview bounds)
+  const handleCopyBackupCode = () => {
+    try {
+      const backupData = {
+        notes,
+        stats,
+        onboarding,
+        version: "1.0",
+        exportedAt: new Date().toISOString()
+      };
+      const jsonStr = JSON.stringify(backupData);
+      // Safe unicode base64 encoding
+      const b64 = btoa(encodeURIComponent(jsonStr).replace(/%([0-9A-F]{2})/g, function(match, p1) {
+        return String.fromCharCode(parseInt(p1, 16));
+      }));
+      navigator.clipboard.writeText(b64);
+      showToast("Código de backup copiado! Guarde-o em segurança para restaurar depois.", "success");
+    } catch (e) {
+      console.error(e);
+      showToast("Não foi possível gerar o código de backup.", "error");
+    }
+  };
+
+  // Import backup from Base64 code string
+  const handleImportBackupCode = (code: string) => {
+    const trimmed = code.trim();
+    if (!trimmed) {
+      showToast("Cole o código de backup antes de clicar em Importar.", "error");
+      return;
+    }
+    try {
+      // Safe unicode base64 decoding
+      const jsonStr = decodeURIComponent(atob(trimmed).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      
+      const parsed = JSON.parse(jsonStr);
+      if (parsed && Array.isArray(parsed.notes)) {
+        syncNotes(parsed.notes);
+        if (parsed.stats) {
+          syncStats(parsed.stats);
+        }
+        if (parsed.onboarding) {
+          setOnboarding(parsed.onboarding);
+          localStorage.setItem("estudaia_onboarding_v4", JSON.stringify(parsed.onboarding));
+        }
+        showToast("Progresso restaurado com sucesso através do código!", "success");
+        setPasteInputCode("");
+      } else {
+        showToast("O código fornecido é inválido ou está incompleto.", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Código corrompido ou mal formatado. Certifique-se de colar o código completo.", "error");
+    }
   };
 
   // Reset to empty/clean slate
@@ -218,6 +307,7 @@ export default function App() {
     localStorage.setItem("estudaia_onboarding_v4", JSON.stringify(cleanOnboarding));
     
     setSelectedNoteId(null);
+    showToast("Todo o progresso local foi limpo e apagado.", "info");
   };
 
   // Reset to original samples
@@ -235,6 +325,7 @@ export default function App() {
     localStorage.setItem("estudaia_onboarding_v4", JSON.stringify(cleanOnboarding));
 
     setSelectedNoteId(null);
+    showToast("Cadernos e estatísticas padrão recarregados com sucesso!", "success");
   };
 
   // State callbacks
@@ -379,6 +470,27 @@ export default function App() {
   return (
     <div id="app-root" className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans text-slate-800 antialiased">
       
+      {/* Toast Alert Notification */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className={`fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4.5 py-3 rounded-2xl shadow-xl border text-xs font-bold ${
+              toast.type === "success" 
+                ? "bg-slate-900 border-emerald-500/30 text-emerald-400" 
+                : toast.type === "error" 
+                ? "bg-rose-950 border-rose-500/30 text-rose-400" 
+                : "bg-slate-900 border-slate-700 text-slate-300"
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-current shrink-0 animate-pulse"></span>
+            <span>{toast.message}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Mobile Sticky Header */}
       <header className="md:hidden h-14 bg-white border-b border-slate-200/80 px-4 flex items-center justify-between sticky top-0 z-40 shadow-xs">
         <div className="flex items-center gap-1.5">
@@ -514,52 +626,72 @@ export default function App() {
           <div className="p-3.5 bg-slate-50 border border-slate-100 rounded-2xl space-y-2.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <Cloud className="w-3.5 h-3.5 text-emerald-500 fill-emerald-50" />
-                <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wide">Auto-Salvamento</span>
+                <Cloud className="w-3.5 h-3.5 text-blue-600 fill-blue-50" />
+                <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wide">Backup & Progresso</span>
               </div>
-              <span className="text-[9px] font-extrabold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-sm">ATIVO</span>
+              <span className="text-[9px] font-extrabold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-sm">SEGURO</span>
             </div>
             <p className="text-[10px] text-slate-400 leading-normal">
-              Suas notas e progresso são salvos automaticamente no navegador.
+              Como o preview e o site público têm domínios diferentes, o navegador separa seus dados. Use as opções abaixo para mover seu progresso!
             </p>
             
-            <div className="grid grid-cols-2 gap-1.5 pt-1">
+            <div className="space-y-1.5">
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  onClick={handleExportBackup}
+                  className="h-7 bg-white hover:bg-slate-100 text-slate-700 text-[9px] font-extrabold rounded-lg transition-all border border-slate-200 flex items-center justify-center gap-1 shadow-2xs cursor-pointer"
+                  title="Baixar arquivo de backup com todas as suas notas"
+                >
+                  <Download className="w-3 h-3 text-blue-600" />
+                  Arq. JSON
+                </button>
+                
+                <label
+                  className="h-7 bg-white hover:bg-slate-100 text-slate-700 text-[9px] font-extrabold rounded-lg transition-all border border-slate-200 flex items-center justify-center gap-1 shadow-2xs cursor-pointer"
+                  title="Restaurar backup de arquivo JSON anterior"
+                >
+                  <Upload className="w-3 h-3 text-blue-600" />
+                  Importar
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={handleImportBackup}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
               <button
-                onClick={handleExportBackup}
-                className="h-7 bg-white hover:bg-slate-100 text-slate-700 text-[9px] font-extrabold rounded-lg transition-all border border-slate-200 flex items-center justify-center gap-1 shadow-2xs"
-                title="Baixar arquivo de backup com todas as suas notas"
+                onClick={handleCopyBackupCode}
+                className="w-full h-7 bg-blue-50 hover:bg-blue-100 text-blue-700 text-[9px] font-extrabold rounded-lg transition-all border border-blue-100 flex items-center justify-center gap-1 cursor-pointer"
+                title="Copiar todo o progresso como código de texto. Excelente para colar no site de produção!"
               >
-                <Download className="w-3 h-3" />
-                Exportar
+                <Copy className="w-3 h-3" />
+                Copiar Código de Backup
               </button>
-              
-              <label
-                className="h-7 bg-white hover:bg-slate-100 text-slate-700 text-[9px] font-extrabold rounded-lg transition-all border border-slate-200 flex items-center justify-center gap-1 shadow-2xs cursor-pointer"
-                title="Restaurar backup de arquivo JSON anterior"
-              >
-                <Upload className="w-3 h-3" />
-                Importar
-                <input
-                  type="file"
-                  accept=".json"
-                  onChange={handleImportBackup}
-                  className="hidden"
-                />
-              </label>
             </div>
 
-            <div className="flex flex-col gap-1.5 pt-1.5 border-t border-slate-200/55">
+            <div className="pt-2 border-t border-slate-200/55 flex justify-between items-center">
+              <button
+                onClick={() => setShowAccountModal(true)}
+                className="text-[9px] text-blue-600 hover:text-blue-800 font-extrabold uppercase tracking-wide cursor-pointer"
+              >
+                Restaurar via Código →
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-1 pt-1.5 border-t border-slate-200/55">
               <button
                 onClick={handleResetToClean}
-                className="w-full h-7 hover:bg-red-50 text-red-600 hover:text-red-700 text-[9px] font-extrabold rounded-lg transition-all flex items-center justify-center gap-1"
+                className="w-full h-6 hover:bg-red-50 text-red-600 hover:text-red-700 text-[8px] font-bold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer"
                 title="Apagar todas as notas para começar limpo"
               >
-                <Trash2 className="w-3 h-3" />
-                Começar do Zero (Limpar Tudo)
+                <Trash2 className="w-2.5 h-2.5" />
+                Limpar Tudo
               </button>
               <button
                 onClick={handleResetToSamples}
-                className="w-full h-5 text-slate-400 hover:text-slate-600 text-[8px] font-bold transition-all flex items-center justify-center gap-1"
+                className="w-full h-5 text-slate-400 hover:text-slate-600 text-[8px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
                 title="Restaurar as notas padrão da plataforma"
               >
                 <RefreshCw className="w-2.5 h-2.5" />
@@ -678,84 +810,182 @@ export default function App() {
               </button>
 
               {/* Header */}
-              <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-                <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
-                  <Shield className="w-6 h-6 text-blue-600" />
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+                <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+                  <Shield className="w-5.5 h-5.5 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">Conta Local Segura</h3>
-                  <p className="text-[10px] text-slate-400 font-bold">100% PRIVADA & SEM SENHA</p>
+                  <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">Gerenciar Conta & Progresso</h3>
+                  <p className="text-[10px] text-slate-400 font-bold">100% SEGURO & PRIVADO</p>
                 </div>
+              </div>
+
+              {/* Tabs Selector */}
+              <div className="flex border-b border-slate-100 mt-3">
+                <button
+                  type="button"
+                  onClick={() => setModalTab("info")}
+                  className={`flex-1 pb-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer ${
+                    modalTab === "info" 
+                      ? "border-blue-600 text-blue-600" 
+                      : "border-transparent text-slate-400 hover:text-slate-600"
+                  }`}
+                >
+                  Sobre a Conta
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModalTab("sync")}
+                  className={`flex-1 pb-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer ${
+                    modalTab === "sync" 
+                      ? "border-blue-600 text-blue-600" 
+                      : "border-transparent text-slate-400 hover:text-slate-600"
+                  }`}
+                >
+                  Salvar / Transferir Progresso
+                </button>
               </div>
 
               {/* Body Content */}
-              <div className="py-5 space-y-4">
-                <p className="text-xs text-slate-600 leading-relaxed font-sans">
-                  Olá, <strong className="text-slate-800">{studentName}</strong>! No <strong>EstudaIA</strong>, nós valorizamos o seu tempo e a sua privacidade. Por isso, <strong>não é necessário realizar nenhum cadastro ou login</strong> para usar a plataforma!
-                </p>
-
-                <div className="p-4 bg-blue-50/50 border border-blue-100/40 rounded-2xl space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="relative flex h-2 w-2 shrink-0">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                    </span>
-                    <h4 className="text-xs font-bold text-blue-900">Como seus dados são salvos?</h4>
-                  </div>
-                  <p className="text-[11px] text-blue-800 leading-relaxed">
-                    Todas as suas notas, metas de estudo, flashcards e estatísticas são salvos automaticamente de forma segura no <strong>LocalStorage</strong> (banco de dados interno do seu próprio navegador).
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Dicas importantes:</h4>
-                  
-                  <div className="flex items-start gap-2 text-[11px] text-slate-500">
-                    <div className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-[9px] mt-0.5 shrink-0">1</div>
-                    <p className="leading-relaxed">
-                      <strong>Não limpe o cache do seu navegador</strong> se quiser manter suas notas sem backups, pois o LocalStorage está associado ao site.
+              <div className="py-4 space-y-4">
+                {modalTab === "info" ? (
+                  <div className="space-y-4">
+                    <p className="text-xs text-slate-600 leading-relaxed font-sans">
+                      Olá, <strong className="text-slate-800">{studentName}</strong>! No <strong>EstudaIA</strong>, nós valorizamos o seu tempo e a sua privacidade. Por isso, <strong>não é necessário realizar nenhum cadastro ou login</strong> para usar a plataforma!
                     </p>
-                  </div>
 
-                  <div className="flex items-start gap-2 text-[11px] text-slate-500">
-                    <div className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-[9px] mt-0.5 shrink-0">2</div>
-                    <p className="leading-relaxed">
-                      <strong>Faça Backup!</strong> Utilize as opções de <strong className="text-slate-700">Exportar</strong> na barra lateral para baixar um arquivo seguro `.json` com todo o seu progresso. Você pode importar esse mesmo arquivo em qualquer outro navegador ou dispositivo.
+                    <div className="p-3.5 bg-blue-50/50 border border-blue-100/40 rounded-xl space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="relative flex h-2 w-2 shrink-0">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        </span>
+                        <h4 className="text-xs font-bold text-blue-900">Como seus dados são salvos?</h4>
+                      </div>
+                      <p className="text-[11px] text-blue-800 leading-relaxed">
+                        Todas as suas notas, metas de estudo, flashcards e estatísticas são salvos automaticamente no <strong>LocalStorage</strong> (banco de dados interno do seu próprio navegador).
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Dicas importantes:</h4>
+                      <div className="flex items-start gap-2 text-[11px] text-slate-500">
+                        <div className="w-4 h-4 rounded-full bg-blue-50 text-blue-700 flex items-center justify-center font-bold text-[9px] mt-0.5 shrink-0">1</div>
+                        <p className="leading-relaxed">
+                          <strong>Não limpe o cache do seu navegador</strong> se quiser manter suas notas sem backups, pois o LocalStorage está associado ao site.
+                        </p>
+                      </div>
+                      <div className="flex items-start gap-2 text-[11px] text-slate-500">
+                        <div className="w-4 h-4 rounded-full bg-blue-50 text-blue-700 flex items-center justify-center font-bold text-[9px] mt-0.5 shrink-0">2</div>
+                        <p className="leading-relaxed">
+                          <strong>Várias URLs:</strong> O navegador protege seus dados separando-os por link. Se você criou notas no link de Visualização (Preview), elas não vão aparecer no site Deployed automaticamente! Mova-as usando a aba ao lado.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Edit student name section in modal */}
+                    <div className="pt-3 border-t border-slate-100 space-y-2">
+                      <label className="text-[10px] font-extrabold text-slate-500 uppercase">Personalizar seu Nome de Estudante</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={nameInput}
+                          onChange={(e) => setNameInput(e.target.value)}
+                          placeholder="Ex: Cauã Cristoff"
+                          className="flex-1 px-3.5 py-2 border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 rounded-xl text-xs bg-slate-50/50 hover:bg-slate-50 focus:bg-white focus:outline-none transition-all"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleSaveName}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          Salvar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      Como a URL de visualização (preview) e a URL pública/compartilhada são consideradas sites diferentes pelo navegador, o seu progresso não sincroniza automaticamente. Use as ferramentas abaixo para mover tudo de forma simples:
                     </p>
-                  </div>
-                </div>
 
-                {/* Edit student name section in modal */}
-                <div className="pt-4 border-t border-slate-100 space-y-2">
-                  <label className="text-[10px] font-extrabold text-slate-500 uppercase">Personalizar seu Nome de Estudante</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={nameInput}
-                      onChange={(e) => setNameInput(e.target.value)}
-                      placeholder="Ex: Cauã Cristoff"
-                      className="flex-1 px-3.5 py-2 border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 rounded-xl text-xs bg-slate-50/50 hover:bg-slate-50 focus:bg-white focus:outline-none transition-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleSaveName}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0"
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      Salvar
-                    </button>
+                    {/* Export Section */}
+                    <div className="p-3.5 bg-slate-50 border border-slate-100 rounded-xl space-y-2.5">
+                      <h4 className="text-xs font-bold text-slate-800">1. Salvar ou Exportar Meu Progresso</h4>
+                      <p className="text-[10px] text-slate-400">Gere um backup completo contendo todos os seus cadernos de estudos, flashcards e estatísticas:</p>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={handleExportBackup}
+                          className="flex-1 py-2 bg-white hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-bold border border-slate-200 flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                        >
+                          <Download className="w-3.5 h-3.5 text-blue-600" />
+                          Baixar Arq. JSON
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCopyBackupCode}
+                          className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                          Copiar Código de Texto
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Import Section */}
+                    <div className="p-3.5 bg-slate-50 border border-slate-100 rounded-xl space-y-2.5">
+                      <h4 className="text-xs font-bold text-slate-800">2. Restaurar Progresso no Deployed/Link Público</h4>
+                      <p className="text-[10px] text-slate-400">Cole o código copiado do outro site ou faça upload do seu arquivo JSON para continuar de onde parou:</p>
+                      
+                      <div className="space-y-2">
+                        <textarea
+                          rows={3}
+                          value={pasteInputCode}
+                          onChange={(e) => setPasteInputCode(e.target.value)}
+                          placeholder="Cole aqui o seu Código de Backup gerado..."
+                          className="w-full p-2.5 border border-slate-200 rounded-xl text-xs bg-white focus:border-blue-500 focus:outline-none font-mono"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleImportBackupCode(pasteInputCode)}
+                            className="flex-1 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <Upload className="w-3.5 h-3.5" />
+                            Importar via Código
+                          </button>
+                          
+                          <label className="flex-1 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer">
+                            <Upload className="w-3.5 h-3.5" />
+                            Subir .json
+                            <input
+                              type="file"
+                              accept=".json"
+                              onChange={(e) => {
+                                handleImportBackup(e);
+                                setShowAccountModal(false);
+                              }}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Footer */}
-              <div className="pt-4 border-t border-slate-100 flex justify-end">
+              <div className="pt-3 border-t border-slate-100 flex justify-end">
                 <button
                   type="button"
                   onClick={() => setShowAccountModal(false)}
-                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                  className="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
                 >
-                  Entendi, obrigado!
+                  Fechar
                 </button>
               </div>
             </motion.div>
