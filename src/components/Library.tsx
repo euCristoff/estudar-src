@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { StudyNote } from "../types";
 import { 
   Search, 
@@ -15,7 +15,10 @@ import {
   FileDown,
   X,
   Edit2,
-  FolderOpen
+  FolderOpen,
+  Camera,
+  RotateCw,
+  Video
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -75,6 +78,127 @@ export default function Library({ notes, onOpenNote, onDeleteNote, onUpdateNote,
   const loaderIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Interactive Camera Capture State
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [cameraFacingMode, setCameraFacingMode] = useState<"user" | "environment">("environment");
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  // Clean up camera on modal close
+  useEffect(() => {
+    if (!isGeneratingModalOpen) {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      setIsCameraActive(false);
+      setCameraError(null);
+    }
+  }, [isGeneratingModalOpen]);
+
+  // Clean up camera on unmount
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
+  const startCamera = async (facing: "user" | "environment" = "environment") => {
+    setIsCameraActive(true);
+    setCameraError(null);
+    setCameraFacingMode(facing);
+
+    // Stop current stream if any
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setCameraError(
+        "Câmera indisponível no iFrame do AI Studio. Por favor, clique no botão 'Abrir em Nova Aba' no canto superior direito para acessar diretamente!"
+      );
+      return;
+    }
+
+    try {
+      const constraints = {
+        video: {
+          facingMode: facing,
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+    } catch (err: any) {
+      console.error("Erro ao abrir a câmera:", err);
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError" || err.message?.includes("Permission denied")) {
+        setCameraError(
+          "Permissão de câmera recusada. Como o app está rodando dentro do iFrame do AI Studio, os navegadores bloqueiam o acesso por segurança. Clique no botão de 'Abrir em Nova Aba' no canto superior direito do Preview para usar a câmera com sucesso!"
+        );
+      } else {
+        setCameraError(
+          "Não foi possível acessar a câmera. Para corrigir, abra o app em uma Nova Aba para que o navegador exiba o balão de permissão de acesso à câmera!"
+        );
+      }
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setIsCameraActive(false);
+    setCameraError(null);
+  };
+
+  const toggleFacingMode = () => {
+    const nextFacing = cameraFacingMode === "user" ? "environment" : "user";
+    startCamera(nextFacing);
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current) return;
+    try {
+      const video = videoRef.current;
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+        const base64Data = dataUrl.split(",")[1];
+        
+        const photoId = `camera-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const photoName = `Foto Câmera - ${new Date().toLocaleTimeString("pt-BR")}.jpg`;
+        
+        setUploadedFiles(prev => [
+          ...prev,
+          {
+            id: photoId,
+            name: photoName,
+            base64: base64Data,
+            mimeType: "image/jpeg"
+          }
+        ]);
+        stopCamera();
+      }
+    } catch (err) {
+      console.error("Erro ao capturar foto:", err);
+      setCameraError("Houve um erro ao processar a captura.");
+    }
+  };
 
   // Edit folder modal state
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
@@ -657,133 +781,235 @@ export default function Library({ notes, onOpenNote, onDeleteNote, onUpdateNote,
 
                     {/* Drag and Drop Upload */}
                     <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block">
-                          Foto da Apostila, Caderno ou Arquivo PDF ({uploadedFiles.length})
-                        </label>
-                        {uploadedFiles.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setUploadedFiles([])}
-                            className="text-[10px] text-red-500 font-extrabold hover:underline cursor-pointer"
-                          >
-                            Limpar Tudo
-                          </button>
-                        )}
-                      </div>
-                      
-                      <div
-                        onDragEnter={handleDrag}
-                        onDragOver={handleDrag}
-                        onDragLeave={handleDrag}
-                        onDrop={handleDrop}
-                        onClick={() => fileInputRef.current?.click()}
-                        className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all ${
-                          dragActive 
-                            ? "border-blue-500 bg-blue-50/50" 
-                            : "border-slate-200 hover:border-blue-400 bg-slate-50/50"
-                        }`}
-                      >
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*,application/pdf"
-                          multiple
-                          onChange={handleFileChange}
-                          className="hidden"
-                        />
-                        {uploadedFiles.length === 0 ? (
-                          <div className="space-y-2">
-                            <div className="p-3 bg-blue-50 text-blue-600 rounded-xl w-fit mx-auto">
-                              <Upload className="w-6 h-6" />
-                            </div>
-                            <p className="text-xs font-bold text-slate-600">Arraste ou clique para adicionar fotos ou PDFs</p>
-                            <p className="text-[10px] text-slate-400">Pode selecionar várias fotos juntas ou colocar mais depois</p>
-                          </div>
-                        ) : (
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                              {uploadedFiles.map((file) => (
-                                <div 
-                                  key={file.id} 
-                                  className="relative bg-white border border-slate-150 rounded-xl p-2.5 flex flex-col items-center justify-center text-center group/item hover:border-blue-300 transition-all shadow-2xs"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  {file.mimeType.includes("pdf") ? (
-                                    <div className="w-12 h-12 rounded-lg bg-red-50 text-red-500 flex items-center justify-center border border-red-100">
-                                      <FileDown className="w-6 h-6" />
-                                    </div>
-                                  ) : (
-                                    <img 
-                                      src={`data:${file.mimeType};base64,${file.base64}`} 
-                                      alt={file.name} 
-                                      className="w-12 h-12 object-cover rounded-lg border border-slate-150 shadow-2xs" 
-                                    />
-                                  )}
-                                  <span className="text-[10px] font-bold text-slate-600 truncate max-w-full mt-2 px-1">{file.name}</span>
-                                  
-                                  <button
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); removeUploadedFile(file.id); }}
-                                    className="absolute -top-1.5 -right-1.5 bg-red-500 hover:bg-red-600 text-white p-1 rounded-full shadow-xs transition-colors cursor-pointer"
-                                    title="Remover arquivo"
-                                  >
-                                    <X className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                            <div className="pt-2.5 border-t border-slate-100/50 flex items-center justify-center gap-1.5 text-[10px] text-blue-600 font-extrabold uppercase tracking-wide">
-                              <Plus className="w-3.5 h-3.5" />
-                              Adicionar mais fotos ou PDFs
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* List of uploaded files */}
-                    {uploadedFiles.length > 0 && (
-                      <div className="space-y-1.5 mt-2">
-                        <div className="max-h-[160px] overflow-y-auto pr-1 space-y-1.5">
-                          {uploadedFiles.map((file) => (
-                            <div 
-                              key={file.id} 
-                              className="flex items-center justify-between p-2 bg-slate-50 border border-slate-100 rounded-xl text-xs"
-                            >
-                              <div className="flex items-center gap-2 truncate flex-1 mr-2">
-                                {file.mimeType.includes("pdf") ? (
-                                  <FileDown className="w-4 h-4 text-red-500 shrink-0" />
-                                ) : file.mimeType.startsWith("image/") ? (
-                                  <img 
-                                    src={`data:${file.mimeType};base64,${file.base64}`} 
-                                    alt={file.name} 
-                                    className="w-8 h-8 object-cover rounded-lg border border-slate-200/80 shrink-0 shadow-2xs" 
-                                  />
-                                ) : (
-                                  <FileText className="w-4 h-4 text-blue-500 shrink-0" />
-                                )}
-                                <span className="font-semibold text-slate-700 truncate">{file.name}</span>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); removeUploadedFile(file.id); }}
-                                className="p-1 hover:bg-slate-200 rounded-full text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="w-full flex items-center justify-center gap-2 p-2.5 border border-dashed border-blue-200 hover:border-blue-400 bg-blue-50/20 hover:bg-blue-50/50 text-blue-600 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                        >
-                          <Plus className="w-4 h-4" />
-                          Adicionar mais fotos / PDFs
-                        </button>
-                      </div>
+                       <div className="flex items-center justify-between">
+                         <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block">
+                           Foto da Apostila, Caderno ou Arquivo PDF ({uploadedFiles.length})
+                         </label>
+                         {uploadedFiles.length > 0 && (
+                           <button
+                             type="button"
+                             onClick={() => setUploadedFiles([])}
+                             className="text-[10px] text-red-500 font-extrabold hover:underline cursor-pointer"
+                           >
+                             Limpar Tudo
+                           </button>
+                         )}
+                       </div>
+                       
+                       {isCameraActive ? (
+                         <div className="border border-slate-200 bg-slate-900 rounded-2xl p-4 text-center space-y-3 relative overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                           <div className="relative bg-black rounded-xl overflow-hidden aspect-video flex items-center justify-center max-h-[220px] mx-auto">
+                             <video
+                               ref={videoRef}
+                               autoPlay
+                               playsInline
+                               muted
+                               className="w-full h-full object-cover"
+                             />
+                             
+                             {cameraError && (
+                               <div className="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center p-4 text-center text-white space-y-2">
+                                 <AlertCircle className="w-8 h-8 text-rose-500" />
+                                 <p className="text-[11px] font-bold">{cameraError}</p>
+                                 <button
+                                   type="button"
+                                   onClick={() => startCamera(cameraFacingMode)}
+                                   className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded-lg transition-all cursor-pointer"
+                                 >
+                                   Tentar Novamente
+                                 </button>
+                               </div>
+                             )}
+ 
+                             {/* Floating control buttons */}
+                             {!cameraError && (
+                               <div className="absolute bottom-3 left-0 right-0 flex justify-center items-center gap-3">
+                                 <button
+                                   type="button"
+                                   onClick={toggleFacingMode}
+                                   className="p-2 bg-slate-800/80 hover:bg-slate-750 text-white rounded-full transition-all border border-slate-700/50 cursor-pointer"
+                                   title="Inverter Câmera (Frontal/Traseira)"
+                                 >
+                                   <RotateCw className="w-4 h-4" />
+                                 </button>
+                                 <button
+                                   type="button"
+                                   onClick={capturePhoto}
+                                   className="h-10 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs font-bold transition-all shadow-lg flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                                   title="Tirar Foto Agora"
+                                 >
+                                   <Camera className="w-4 h-4 text-blue-200" />
+                                   Capturar Foto
+                                 </button>
+                               </div>
+                             )}
+                           </div>
+                           
+                           <div className="flex items-center justify-between text-[11px] text-slate-300">
+                             <span className="font-bold uppercase tracking-wide flex items-center gap-1.5">
+                               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                               Câmera Ativa ({cameraFacingMode === "user" ? "Frontal" : "Traseira"})
+                             </span>
+                             <button
+                               type="button"
+                               onClick={stopCamera}
+                               className="text-rose-400 font-extrabold hover:underline cursor-pointer"
+                             >
+                               Cancelar Câmera
+                             </button>
+                           </div>
+                         </div>
+                       ) : (
+                         <div
+                           onDragEnter={handleDrag}
+                           onDragOver={handleDrag}
+                           onDragLeave={handleDrag}
+                           onDrop={handleDrop}
+                           onClick={() => fileInputRef.current?.click()}
+                           className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all ${
+                             dragActive 
+                               ? "border-blue-500 bg-blue-50/50" 
+                               : "border-slate-200 hover:border-blue-400 bg-slate-50/50"
+                           }`}
+                         >
+                           <input
+                             ref={fileInputRef}
+                             type="file"
+                             accept="image/*,application/pdf"
+                             multiple
+                             onChange={handleFileChange}
+                             className="hidden"
+                           />
+                           {uploadedFiles.length === 0 ? (
+                             <div className="space-y-3.5">
+                               <div className="p-3 bg-blue-50 text-blue-600 rounded-xl w-fit mx-auto">
+                                 <Upload className="w-6 h-6" />
+                               </div>
+                               <p className="text-xs font-bold text-slate-600">Arraste ou clique para adicionar fotos ou PDFs</p>
+                               <p className="text-[10px] text-slate-400">Pode selecionar várias fotos juntas ou colocar mais depois</p>
+                               
+                               <div className="pt-2 flex justify-center gap-2">
+                                 <button
+                                   type="button"
+                                   onClick={(e) => {
+                                     e.stopPropagation();
+                                     startCamera("environment");
+                                   }}
+                                   className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-extrabold rounded-xl transition-all cursor-pointer shadow-sm"
+                                 >
+                                   <Camera className="w-4 h-4 text-blue-100" />
+                                   Tirar Foto com a Câmera
+                                 </button>
+                               </div>
+                             </div>
+                           ) : (
+                             <div className="space-y-4">
+                               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                 {uploadedFiles.map((file) => (
+                                   <div 
+                                     key={file.id} 
+                                     className="relative bg-white border border-slate-150 rounded-xl p-2.5 flex flex-col items-center justify-center text-center group/item hover:border-blue-300 transition-all shadow-2xs"
+                                     onClick={(e) => e.stopPropagation()}
+                                   >
+                                     {file.mimeType.includes("pdf") ? (
+                                       <div className="w-12 h-12 rounded-lg bg-red-50 text-red-500 flex items-center justify-center border border-red-100">
+                                         <FileDown className="w-6 h-6" />
+                                       </div>
+                                     ) : (
+                                       <img 
+                                         src={`data:${file.mimeType};base64,${file.base64}`} 
+                                         alt={file.name} 
+                                         className="w-12 h-12 object-cover rounded-lg border border-slate-150 shadow-2xs" 
+                                       />
+                                     )}
+                                     <span className="text-[10px] font-bold text-slate-600 truncate max-w-full mt-2 px-1">{file.name}</span>
+                                     
+                                     <button
+                                       type="button"
+                                       onClick={(e) => { e.stopPropagation(); removeUploadedFile(file.id); }}
+                                       className="absolute -top-1.5 -right-1.5 bg-red-500 hover:bg-red-600 text-white p-1 rounded-full shadow-xs transition-colors cursor-pointer"
+                                       title="Remover arquivo"
+                                     >
+                                       <X className="w-3 h-3" />
+                                     </button>
+                                   </div>
+                                 ))}
+                               </div>
+                               <div className="pt-2.5 border-t border-slate-100/50 flex items-center justify-center gap-3">
+                                 <span className="flex items-center gap-1 text-[10px] text-blue-600 font-extrabold uppercase tracking-wide">
+                                   <Plus className="w-3.5 h-3.5" />
+                                   Colocar Mais
+                                 </span>
+                                 <button
+                                   type="button"
+                                   onClick={(e) => {
+                                     e.stopPropagation();
+                                     startCamera("environment");
+                                   }}
+                                   className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 hover:bg-blue-100 border border-blue-200/50 text-blue-700 text-[10px] font-bold rounded-lg cursor-pointer"
+                                 >
+                                   <Camera className="w-3 h-3 text-blue-600" />
+                                   Tirar Foto
+                                 </button>
+                               </div>
+                             </div>
+                           )}
+                         </div>
+                       )}
+                     </div>
+ 
+                     {/* List of uploaded files */}
+                     {uploadedFiles.length > 0 && (
+                       <div className="space-y-1.5 mt-2">
+                         <div className="max-h-[160px] overflow-y-auto pr-1 space-y-1.5">
+                           {uploadedFiles.map((file) => (
+                             <div 
+                               key={file.id} 
+                               className="flex items-center justify-between p-2 bg-slate-50 border border-slate-100 rounded-xl text-xs"
+                             >
+                               <div className="flex items-center gap-2 truncate flex-1 mr-2">
+                                 {file.mimeType.includes("pdf") ? (
+                                   <FileDown className="w-4 h-4 text-red-500 shrink-0" />
+                                 ) : file.mimeType.startsWith("image/") ? (
+                                   <img 
+                                     src={`data:${file.mimeType};base64,${file.base64}`} 
+                                     alt={file.name} 
+                                     className="w-8 h-8 object-cover rounded-lg border border-slate-200/80 shrink-0 shadow-2xs" 
+                                   />
+                                 ) : (
+                                   <FileText className="w-4 h-4 text-blue-500 shrink-0" />
+                                 )}
+                                 <span className="font-semibold text-slate-700 truncate">{file.name}</span>
+                               </div>
+                               <button
+                                 type="button"
+                                 onClick={(e) => { e.stopPropagation(); removeUploadedFile(file.id); }}
+                                 className="p-1 hover:bg-slate-200 rounded-full text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
+                               >
+                                 <X className="w-3.5 h-3.5" />
+                               </button>
+                             </div>
+                           ))}
+                         </div>
+                         <div className="flex gap-2">
+                           <button
+                             type="button"
+                             onClick={() => fileInputRef.current?.click()}
+                             className="flex-1 flex items-center justify-center gap-2 p-2.5 border border-dashed border-blue-250 hover:border-blue-400 bg-blue-50/20 hover:bg-blue-50/50 text-blue-600 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                           >
+                             <Plus className="w-4 h-4" />
+                             Escolher Mais Arquivos
+                           </button>
+                           <button
+                             type="button"
+                             onClick={() => startCamera("environment")}
+                             className="flex-1 flex items-center justify-center gap-2 p-2.5 border border-dashed border-emerald-250 hover:border-emerald-450 bg-emerald-50/20 hover:bg-emerald-50/50 text-emerald-600 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                           >
+                             <Camera className="w-4 h-4 text-emerald-600" />
+                             Tirar Mais Fotos
+                           </button>
+                         </div>
+                       </div>
                     )}
 
                     {/* Or Text Input */}
