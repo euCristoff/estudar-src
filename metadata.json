@@ -1,6 +1,6 @@
 {
   "name": "EstudaIA",
   "description": "Plataforma de estudos inteligente e interativa alimentada por IA, inspirada no Notion, Obsidian e Duolingo.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": ["camera", "microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

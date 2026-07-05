@@ -692,13 +692,53 @@ export default function Library({ notes, onOpenNote, onDeleteNote, onUpdateNote,
                           onChange={handleFileChange}
                           className="hidden"
                         />
-                        <div className="space-y-2">
-                          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl w-fit mx-auto">
-                            <Upload className="w-6 h-6" />
+                        {uploadedFiles.length === 0 ? (
+                          <div className="space-y-2">
+                            <div className="p-3 bg-blue-50 text-blue-600 rounded-xl w-fit mx-auto">
+                              <Upload className="w-6 h-6" />
+                            </div>
+                            <p className="text-xs font-bold text-slate-600">Arraste ou clique para adicionar fotos ou PDFs</p>
+                            <p className="text-[10px] text-slate-400">Pode selecionar várias fotos juntas ou colocar mais depois</p>
                           </div>
-                          <p className="text-xs font-bold text-slate-600">Arraste ou clique para adicionar fotos ou PDFs</p>
-                          <p className="text-[10px] text-slate-400">Pode selecionar várias fotos juntas ou colocar mais depois</p>
-                        </div>
+                        ) : (
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                              {uploadedFiles.map((file) => (
+                                <div 
+                                  key={file.id} 
+                                  className="relative bg-white border border-slate-150 rounded-xl p-2.5 flex flex-col items-center justify-center text-center group/item hover:border-blue-300 transition-all shadow-2xs"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {file.mimeType.includes("pdf") ? (
+                                    <div className="w-12 h-12 rounded-lg bg-red-50 text-red-500 flex items-center justify-center border border-red-100">
+                                      <FileDown className="w-6 h-6" />
+                                    </div>
+                                  ) : (
+                                    <img 
+                                      src={`data:${file.mimeType};base64,${file.base64}`} 
+                                      alt={file.name} 
+                                      className="w-12 h-12 object-cover rounded-lg border border-slate-150 shadow-2xs" 
+                                    />
+                                  )}
+                                  <span className="text-[10px] font-bold text-slate-600 truncate max-w-full mt-2 px-1">{file.name}</span>
+                                  
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); removeUploadedFile(file.id); }}
+                                    className="absolute -top-1.5 -right-1.5 bg-red-500 hover:bg-red-600 text-white p-1 rounded-full shadow-xs transition-colors cursor-pointer"
+                                    title="Remover arquivo"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="pt-2.5 border-t border-slate-100/50 flex items-center justify-center gap-1.5 text-[10px] text-blue-600 font-extrabold uppercase tracking-wide">
+                              <Plus className="w-3.5 h-3.5" />
+                              Adicionar mais fotos ou PDFs
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -714,6 +754,12 @@ export default function Library({ notes, onOpenNote, onDeleteNote, onUpdateNote,
                               <div className="flex items-center gap-2 truncate flex-1 mr-2">
                                 {file.mimeType.includes("pdf") ? (
                                   <FileDown className="w-4 h-4 text-red-500 shrink-0" />
+                                ) : file.mimeType.startsWith("image/") ? (
+                                  <img 
+                                    src={`data:${file.mimeType};base64,${file.base64}`} 
+                                    alt={file.name} 
+                                    className="w-8 h-8 object-cover rounded-lg border border-slate-200/80 shrink-0 shadow-2xs" 
+                                  />
                                 ) : (
                                   <FileText className="w-4 h-4 text-blue-500 shrink-0" />
                                 )}

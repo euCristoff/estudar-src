@@ -87,12 +87,32 @@ export default function App() {
 
   // Load from LocalStorage
   useEffect(() => {
-    const savedNotes = localStorage.getItem("estudaia_notes_v4");
-    const savedStats = localStorage.getItem("estudaia_stats_v4");
+    let savedNotes = localStorage.getItem("estudaia_notes_v4");
+    let savedStats = localStorage.getItem("estudaia_stats_v4");
+
+    // Migration / backward compatibility check for previous version keys
+    if (!savedNotes) {
+      savedNotes = localStorage.getItem("estudaia_notes_v3") || 
+                   localStorage.getItem("estudaia_notes_v2") || 
+                   localStorage.getItem("estudaia_notes_v1") || 
+                   localStorage.getItem("estudaia_notes") ||
+                   localStorage.getItem("study_notes") ||
+                   localStorage.getItem("notes");
+    }
+    if (!savedStats) {
+      savedStats = localStorage.getItem("estudaia_stats_v3") || 
+                   localStorage.getItem("estudaia_stats_v2") || 
+                   localStorage.getItem("estudaia_stats_v1") || 
+                   localStorage.getItem("estudaia_stats") ||
+                   localStorage.getItem("stats");
+    }
 
     if (savedNotes) {
       try {
-        setNotes(JSON.parse(savedNotes));
+        const parsedNotes = JSON.parse(savedNotes);
+        setNotes(parsedNotes);
+        // Guarantee synchronization with the current storage key v4
+        localStorage.setItem("estudaia_notes_v4", JSON.stringify(parsedNotes));
       } catch (e) {
         console.error("Erro ao carregar notas do localStorage", e);
         setNotes(INITIAL_NOTES);
@@ -104,7 +124,10 @@ export default function App() {
 
     if (savedStats) {
       try {
-        setStats(JSON.parse(savedStats));
+        const parsedStats = JSON.parse(savedStats);
+        setStats(parsedStats);
+        // Guarantee synchronization with the current storage key v4
+        localStorage.setItem("estudaia_stats_v4", JSON.stringify(parsedStats));
       } catch (e) {
         console.error("Erro ao carregar estatísticas do localStorage", e);
         setStats(INITIAL_STATS);
