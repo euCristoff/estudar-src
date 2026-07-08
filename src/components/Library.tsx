@@ -18,13 +18,14 @@ import {
   FolderOpen,
   Camera,
   RotateCw,
-  Video
+  Video,
+  Zap
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 interface LibraryProps {
   notes: StudyNote[];
-  onOpenNote: (id: string) => void;
+  onOpenNote: (id: string, initialTab?: "content" | "mindmap" | "flashcards" | "practice" | "professor") => void;
   onDeleteNote: (id: string) => void;
   onUpdateNote: (note: StudyNote) => void;
   onAddNote: (note: StudyNote) => void;
@@ -192,7 +193,7 @@ export default function Library({ notes, onOpenNote, onDeleteNote, onUpdateNote,
       // Reset inputs
       setUploadedFiles([]);
       setUploadTopic("");
-      onOpenNote(newNote.id);
+      onOpenNote(newNote.id, "flashcards");
     } catch (err: any) {
       console.error("Erro ao gerar nota:", err);
       setGenerationError(err.message || "Não foi possível conectar com o servidor de IA. Verifique sua chave API.");
@@ -514,6 +515,19 @@ export default function Library({ notes, onOpenNote, onDeleteNote, onUpdateNote,
                     </p>
                   </div>
                 </div>
+
+                {note.flashcards && note.flashcards.length > 0 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenNote(note.id, "flashcards");
+                    }}
+                    className="w-full h-8.5 bg-blue-50 hover:bg-blue-100 text-blue-700 hover:text-blue-800 text-xs font-extrabold rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-blue-100/40 relative overflow-hidden group/btn"
+                  >
+                    <Zap className="w-3.5 h-3.5 fill-blue-600 text-blue-600 group-hover/btn:scale-110 transition-transform" />
+                    Estudar {note.flashcards.length} Flashcards
+                  </button>
+                )}
 
                 {/* Footer details */}
                 <div className="pt-3 border-t border-slate-50 flex items-center justify-between text-[11px] text-slate-400">

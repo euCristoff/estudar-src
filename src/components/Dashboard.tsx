@@ -24,18 +24,11 @@ import { motion } from "motion/react";
 interface DashboardProps {
   stats: UserStats;
   notes: StudyNote[];
-  onOpenNote: (id: string) => void;
-  onNavigateTo: (view: "library" | "planner") => void;
-  onboarding: {
-    createNote: boolean;
-    reviewFlashcards: boolean;
-    takeQuiz: boolean;
-    chatProfessor: boolean;
-  };
-  onCompleteOnboardingTask: (task: 'createNote' | 'reviewFlashcards' | 'takeQuiz' | 'chatProfessor') => void;
+  onOpenNote: (id: string, initialTab?: "content" | "flashcards" | "practice" | "professor") => void;
+  onNavigateTo: (view: "library") => void;
 }
 
-export default function Dashboard({ stats, notes, onOpenNote, onNavigateTo, onboarding, onCompleteOnboardingTask }: DashboardProps) {
+export default function Dashboard({ stats, notes, onOpenNote, onNavigateTo }: DashboardProps) {
   // Find pending spaced repetition reviews
   const pendingReviews = notes.filter(note => {
     if (!note.flashcards || note.flashcards.length === 0) return false;
@@ -60,72 +53,25 @@ export default function Dashboard({ stats, notes, onOpenNote, onNavigateTo, onbo
         : "Nenhuma nota vencida! Parabéns por manter em dia.",
       completed: pendingReviews.length === 0,
       actionLabel: pendingReviews.length > 0 ? "Revisar Agora" : "Ver Biblioteca",
-      action: () => pendingReviews.length > 0 ? onOpenNote(pendingReviews[0].id) : onNavigateTo("library")
+      action: () => pendingReviews.length > 0 ? onOpenNote(pendingReviews[0].id, "flashcards") : onNavigateTo("library")
     },
     {
       id: "seq-2",
       title: "Praticar Flashcards",
       description: "Pratique pelo menos 5 flashcards hoje para fixar a memória de longo prazo.",
       completed: stats.totalTimeStudied > 200,
-      actionLabel: "Praticar",
-      action: () => onNavigateTo("library")
+      actionLabel: "Praticar Flashcards",
+      action: () => notes.length > 0 ? onOpenNote(notes[0].id, "flashcards") : onNavigateTo("library")
     },
     {
       id: "seq-3",
       title: "Simulado de Prova",
-      description: "Tente resolver um quiz ou questão do ENEM em suas notas favoritas.",
+      description: "Tente resolver um quiz ou questão em seus cadernos favoritos.",
       completed: stats.totalQuizzesTaken > 15,
       actionLabel: "Fazer Quiz",
       action: () => onNavigateTo("library")
     }
   ];
-
-  const [expandedTask, setExpandedTask] = useState<string | null>("createNote");
-  
-  const [hideCelebration, setHideCelebration] = useState(() => {
-    return localStorage.getItem("estudaia_hide_celebration") === "true";
-  });
-
-  const onboardingTasks = [
-    {
-      id: "createNote" as const,
-      title: "Importar ou Criar sua primeira matéria",
-      shortDesc: "Envie um caderno, foto ou digite um assunto livre para a IA organizar.",
-      instructions: "Vá para a aba 'Biblioteca' na barra lateral, clique no botão 'Importar Caderno / PDF' no topo direito, escolha um dos assuntos sugeridos (como Matemática ou História) e envie uma foto ou digite um assunto livre (ex: 'Fórmula de Bhaskara'). A IA gerará um caderno completo de estudos em segundos!",
-      actionLabel: "Ir para a Biblioteca",
-      action: () => onNavigateTo("library"),
-      completed: onboarding.createNote,
-    },
-    {
-      id: "reviewFlashcards" as const,
-      title: "Praticar Flashcards Ativos",
-      shortDesc: "Fixe a memória de longo prazo respondendo se lembrou do cartão.",
-      instructions: "Entre em qualquer matéria da sua Biblioteca (como o nosso guia interativo 'Como Usar o EstudaIA'), selecione a aba 'Flashcards', tente responder mentalmente à pergunta e clique na carta para virá-la. Em seguida, selecione se você se lembrou ou errou para treinar seu aprendizado ativo!",
-      actionLabel: "Acessar Biblioteca",
-      action: () => onNavigateTo("library"),
-      completed: onboarding.reviewFlashcards,
-    },
-    {
-      id: "takeQuiz" as const,
-      title: "Fazer um Simulado ou Quiz",
-      shortDesc: "Verifique seu conhecimento com testes interativos explicados pela IA.",
-      instructions: "Entre em uma matéria de sua Biblioteca, vá até a aba 'Praticar Quizzes', selecione uma das alternativas na questão e clique em 'Verificar Resposta'. Você verá uma explicação didática do erro/acerto instantaneamente!",
-      actionLabel: "Responder Questões",
-      action: () => onNavigateTo("library"),
-      completed: onboarding.takeQuiz,
-    },
-    {
-      id: "chatProfessor" as const,
-      title: "Interagir com o Professor Virtual",
-      shortDesc: "Tire dúvidas no chat ou peça uma simulação de Prova Oral.",
-      instructions: "Entre em uma matéria, selecione a aba 'Professor Virtual' no topo, e digite qualquer pergunta ou selecione o modo 'Prova Oral' para que o professor faça perguntas orais interativas simuladas!",
-      actionLabel: "Falar com Professor",
-      action: () => onNavigateTo("library"),
-      completed: onboarding.chatProfessor,
-    }
-  ];
-
-  const allOnboardingCompleted = onboardingTasks.every(t => t.completed);
 
   // Subjects available
   const subjectsList = [
@@ -225,150 +171,56 @@ export default function Dashboard({ stats, notes, onOpenNote, onNavigateTo, onbo
         {/* Left Columns - Study Sequence & Reviews */}
         <div className="lg:col-span-2 space-y-8">
           {/* Onboarding Checklist / Daily Study Sequence */}
-          {!allOnboardingCompleted ? (
-            <div className="bg-white border border-blue-100 rounded-3xl p-6 shadow-xs space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h2 className="text-lg font-bold text-slate-800 font-sans flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-blue-500 fill-blue-50" />
-                  Primeiros Passos ({onboardingTasks.filter(t => t.completed).length}/4)
-                </h2>
-                <span className="text-xs text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full font-bold">Guia Inicial</span>
-              </div>
-              
-              <div className="space-y-3">
-                {onboardingTasks.map((task, i) => (
-                  <div 
-                    key={task.id}
-                    className={`border rounded-xl transition-all overflow-hidden ${
-                      task.completed 
-                        ? "bg-slate-50/70 border-slate-100 opacity-75" 
-                        : expandedTask === task.id
-                          ? "bg-white border-blue-300 shadow-2xs" 
-                          : "bg-white border-slate-100 hover:border-slate-200"
-                    }`}
-                  >
-                    <button
-                      onClick={() => setExpandedTask(expandedTask === task.id ? null : task.id)}
-                      className="w-full p-4 flex items-center justify-between text-left gap-3 cursor-pointer"
-                    >
-                      <div className="flex items-start gap-3 flex-1 min-w-0">
-                        <div className="mt-0.5 shrink-0">
-                          {task.completed ? (
-                            <CheckCircle className="w-5 h-5 text-emerald-500 fill-emerald-50" />
-                          ) : (
-                            <div className="w-5 h-5 rounded-full border border-slate-300 flex items-center justify-center text-[10px] font-bold text-slate-400">
-                              {i + 1}
-                            </div>
-                          )}
-                        </div>
-                        <div className="truncate">
-                          <h3 className={`font-bold text-sm ${task.completed ? "text-slate-400 line-through" : "text-slate-800"}`}>
-                            {task.title}
-                          </h3>
-                          <p className="text-xs text-slate-400 font-medium truncate">{task.shortDesc}</p>
-                        </div>
-                      </div>
-                      <div className="shrink-0 text-slate-400">
-                        {expandedTask === task.id ? (
-                          <ChevronUp className="w-4 h-4" />
-                        ) : (
-                          <ChevronDown className="w-4 h-4" />
-                        )}
-                      </div>
-                    </button>
-
-                    {expandedTask === task.id && (
-                      <div className="px-4 pb-4 pt-1 border-t border-slate-50 bg-blue-50/5">
-                        <p className="text-xs text-slate-600 leading-relaxed max-w-2xl">
-                          {task.instructions}
-                        </p>
-                        <div className="mt-3 flex">
-                          <button
-                            onClick={task.action}
-                            className="px-3.5 h-7.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg inline-flex items-center gap-1 transition-all cursor-pointer"
-                          >
-                            {task.actionLabel}
-                            <ArrowRight className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+          {/* Daily Study Sequence */}
+          <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-800 font-sans flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-blue-500" />
+                Sequência de Estudos do Dia
+              </h2>
+              <span className="text-xs text-slate-400 font-sans">Atualizado hoje</span>
             </div>
-          ) : !hideCelebration ? (
-            <div className="bg-linear-to-r from-emerald-500 to-teal-600 rounded-3xl p-6 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="space-y-1 text-center md:text-left">
-                <h2 className="text-lg font-extrabold flex items-center justify-center md:justify-start gap-1.5">
-                  🎉 Parabéns, Você Concluiu os Passos Básicos!
-                </h2>
-                <p className="text-xs text-emerald-50 leading-relaxed">
-                  Você aprendeu as mecânicas fundamentais do EstudaIA e está totalmente pronto para estudar em alto rendimento!
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  setHideCelebration(true);
-                  localStorage.setItem("estudaia_hide_celebration", "true");
-                }}
-                className="px-5 h-9 bg-white hover:bg-emerald-50 text-emerald-700 font-extrabold text-xs rounded-xl transition-all shadow-xs cursor-pointer shrink-0"
-              >
-                Entendido, Ocultar Guia
-              </button>
-            </div>
-          ) : (
-            /* Daily study sequence is rendered once onboarding is completed and dismissed */
-            <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-bold text-slate-800 font-sans flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-blue-500" />
-                  Sequência de Estudos do Dia
-                </h2>
-                <span className="text-xs text-slate-400 font-sans">Atualizado hoje</span>
-              </div>
-              
-              <div className="space-y-3">
-                {dailySequence.map((item, i) => (
-                  <div 
-                    key={item.id} 
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border transition-all ${
-                      item.completed 
-                        ? "bg-slate-50 border-slate-100 opacity-75" 
-                        : "bg-white border-slate-100 hover:border-slate-200 shadow-2xs"
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="mt-1">
-                        {item.completed ? (
-                          <CheckCircle className="w-5 h-5 text-emerald-500 fill-emerald-50" />
-                        ) : (
-                          <div className="w-5 h-5 rounded-full border-2 border-blue-400 flex items-center justify-center text-xs font-bold text-blue-500">
-                            {i + 1}
-                          </div>
-                        )}
-                      </div>
-                      <div>
-                        <h3 className={`font-semibold text-sm ${item.completed ? "text-slate-500 line-through" : "text-slate-800"}`}>
-                          {item.title}
-                        </h3>
-                        <p className="text-xs text-slate-500 mt-0.5">{item.description}</p>
-                      </div>
+            
+            <div className="space-y-3">
+              {dailySequence.map((item, i) => (
+                <div 
+                  key={item.id} 
+                  className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border transition-all ${
+                    item.completed 
+                      ? "bg-slate-50 border-slate-100 opacity-75" 
+                      : "bg-white border-slate-100 hover:border-slate-200 shadow-2xs"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="mt-1">
+                      {item.completed ? (
+                        <CheckCircle className="w-5 h-5 text-emerald-500 fill-emerald-50" />
+                      ) : (
+                        <div className="w-5 h-5 rounded-full border-2 border-blue-400 flex items-center justify-center text-xs font-bold text-blue-500">
+                          {i + 1}
+                        </div>
+                      )}
                     </div>
-                    {!item.completed && (
-                      <button 
-                        onClick={item.action}
-                        className="mt-3 sm:mt-0 px-4 h-8 text-xs font-semibold bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg inline-flex items-center gap-1 transition-all cursor-pointer"
-                      >
-                        {item.actionLabel}
-                        <ArrowRight className="w-3 h-3" />
-                      </button>
-                    )}
+                    <div>
+                      <h3 className={`font-semibold text-sm ${item.completed ? "text-slate-500 line-through" : "text-slate-800"}`}>
+                        {item.title}
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">{item.description}</p>
+                    </div>
                   </div>
-                ))}
-              </div>
+                  {!item.completed && (
+                    <button 
+                      onClick={item.action}
+                      className="mt-3 sm:mt-0 px-4 h-8 text-xs font-semibold bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg inline-flex items-center gap-1 transition-all cursor-pointer"
+                    >
+                      {item.actionLabel}
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
-          )}
+          </div>
 
           {/* Pending Reviews Space */}
           <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-xs space-y-4">
@@ -400,7 +252,7 @@ export default function Dashboard({ stats, notes, onOpenNote, onNavigateTo, onbo
                       <p className="text-xs text-slate-500 line-clamp-2">{note.summary}</p>
                     </div>
                     <button 
-                      onClick={() => onOpenNote(note.id)}
+                      onClick={() => onOpenNote(note.id, "flashcards")}
                       className="mt-3 w-full h-8 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all cursor-pointer"
                     >
                       Revisar {note.flashcards.length} Flashcards
@@ -474,10 +326,10 @@ export default function Dashboard({ stats, notes, onOpenNote, onNavigateTo, onbo
             </div>
 
             <button 
-              onClick={() => onNavigateTo("planner")}
+              onClick={() => onNavigateTo("library")}
               className="w-full py-2.5 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-100 rounded-xl transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              Ver Plano de Estudos Inteligente
+              Ver Meus Cadernos de Estudo
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>

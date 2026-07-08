@@ -3,13 +3,9 @@ import { StudyNote, UserStats } from "./types";
 import { INITIAL_NOTES, INITIAL_STATS } from "./initialData";
 import Dashboard from "./components/Dashboard";
 import Library from "./components/Library";
-import KnowledgeGraph from "./components/KnowledgeGraph";
-import StudyPlanner from "./components/StudyPlanner";
 import StudyNoteView from "./components/StudyNoteView";
 import { 
-  Compass, 
   BookOpen, 
-  Network, 
   LayoutDashboard, 
   Flame, 
   Clock, 
@@ -34,8 +30,9 @@ import { motion, AnimatePresence } from "motion/react";
 export default function App() {
   const [notes, setNotes] = useState<StudyNote[]>([]);
   const [stats, setStats] = useState<UserStats>(INITIAL_STATS);
-  const [activeView, setActiveView] = useState<"dashboard" | "library" | "graph" | "planner">("dashboard");
+  const [activeView, setActiveView] = useState<"dashboard" | "library">("dashboard");
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+  const [initialStudyTab, setInitialStudyTab] = useState<"content" | "flashcards" | "practice" | "professor">("flashcards");
   
   // Mobile navigation drawer toggle
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -451,19 +448,18 @@ export default function App() {
   // Navigation array
   const navigationItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { id: "library", label: "Biblioteca (Notion)", icon: BookOpen },
-    { id: "graph", label: "Grafo Conexões", icon: Network },
-    { id: "planner", label: "Plano de Estudos", icon: Compass }
+    { id: "library", label: "Cadernos de Estudo", icon: BookOpen }
   ];
 
-  const handleNavigate = (view: "dashboard" | "library" | "graph" | "planner") => {
+  const handleNavigate = (view: "dashboard" | "library") => {
     setSelectedNoteId(null);
     setActiveView(view);
     setIsMobileMenuOpen(false);
   };
 
-  const handleOpenNoteDirectly = (id: string) => {
+  const handleOpenNoteDirectly = (id: string, initialTab: "content" | "flashcards" | "practice" | "professor" = "flashcards") => {
     setSelectedNoteId(id);
+    setInitialStudyTab(initialTab);
     setIsMobileMenuOpen(false);
   };
 
@@ -735,6 +731,7 @@ export default function App() {
                 onUpdateNote={handleUpdateNote}
                 onRecordQuizAttempt={handleRecordQuizAttempt}
                 onCompleteOnboardingTask={completeOnboardingTask}
+                initialTab={initialStudyTab}
               />
             ) : (
               /* Render standard page views */
@@ -745,8 +742,6 @@ export default function App() {
                     notes={notes}
                     onOpenNote={handleOpenNoteDirectly}
                     onNavigateTo={(view) => handleNavigate(view)}
-                    onboarding={onboarding}
-                    onCompleteOnboardingTask={completeOnboardingTask}
                   />
                 )}
                 
@@ -757,22 +752,6 @@ export default function App() {
                     onDeleteNote={handleDeleteNote}
                     onUpdateNote={handleUpdateNote}
                     onAddNote={handleAddNote}
-                  />
-                )}
-
-                {activeView === "graph" && (
-                  <KnowledgeGraph 
-                    notes={notes}
-                    onOpenNote={handleOpenNoteDirectly}
-                  />
-                )}
-
-                {activeView === "planner" && (
-                  <StudyPlanner 
-                    stats={stats}
-                    notes={notes}
-                    onNavigateTo={(view) => handleNavigate(view)}
-                    onOpenNote={handleOpenNoteDirectly}
                   />
                 )}
               </>
