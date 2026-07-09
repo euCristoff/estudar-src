@@ -71,15 +71,13 @@ app.post("/api/generate-study", async (req, res) => {
     }
 
     let contents: any[] = [];
-    let promptText = "";
-
-    if (images && Array.isArray(images) && images.length > 0) {
+    let promptText = "";    if (images && Array.isArray(images) && images.length > 0) {
       promptText = `Analise as imagens ou documentos PDF enviados (no total de ${images.length} arquivos). Identifique o texto e o assunto principal de todos eles de forma integrada.
 Selecione a matéria correspondente, preferencialmente: ${subject || "Identificar automaticamente"}.
 Crie um resumo e uma explicação detalhada estruturada em três níveis (Básico, Intermediário e Avançado) unindo o conteúdo de todos esses arquivos de maneira fluida.
 Destaque as palavras importantes com suas definições.
 Gere um mapa mental com nós conectados (nodes e edges).
-Crie pelo menos 5 flashcards dinâmicos de pergunta/resposta.
+Crie pelo menos 5 flashcards dinâmicos de pergunta/resposta. IMPORTANTE: Se você identificar quaisquer questões, exercícios ou enunciados de provas nas imagens ou documentos fornecidos, você DEVE obrigatoriamente incluí-los como flashcards (Frente: Pergunta/Exercício identificado, Verso: Resposta correta com explicação). Além disso, converta também as questões de quiz, desafios e questões ENEM geradas para este caderno em flashcards individuais adicionais!
 Crie um quiz com 4 perguntas objetivas (4 alternativas cada) e uma explicação de cada resposta.
 Crie 3 perguntas discursivas com respostas sugeridas.
 Crie 3 desafios no estilo de provas difíceis.
@@ -105,7 +103,7 @@ Selecione a matéria correspondente, preferencialmente: ${subject || "Identifica
 Crie um resumo e uma explicação detalhada estruturada em três níveis (Básico, Intermediário e Avançado).
 Destaque as palavras importantes com suas definições.
 Gere um mapa mental com nós conectados (nodes e edges).
-Crie pelo menos 5 flashcards dinâmicos de pergunta/resposta.
+Crie pelo menos 5 flashcards dinâmicos de pergunta/resposta. IMPORTANTE: Se você identificar quaisquer questões, exercícios ou enunciados de provas na imagem ou documento fornecido, você DEVE obrigatoriamente incluí-los como flashcards (Frente: Pergunta/Exercício identificado, Verso: Resposta correta com explicação). Além disso, converta também as questões de quiz, desafios e questões ENEM geradas para este caderno em flashcards individuais adicionais!
 Crie um quiz com 4 perguntas objetivas (4 alternativas cada) e uma explicação de cada resposta.
 Crie 3 perguntas discursivas com respostas sugeridas.
 Crie 3 desafios no estilo de provas difíceis.
@@ -127,7 +125,7 @@ Matéria recomendada: ${subject || "Identificar automaticamente"}.
 Crie um resumo e uma explicação detalhada estruturada em três níveis (Básico, Intermediário e Avançado).
 Destaque as palavras importantes com suas definições.
 Gere um mapa mental com nós conectados (nodes e edges).
-Crie pelo menos 5 flashcards dinâmicos de pergunta/resposta.
+Crie pelo menos 5 flashcards dinâmicos de pergunta/resposta. IMPORTANTE: Se você identificar quaisquer questões, exercícios ou enunciados de provas no tópico/texto fornecido, você DEVE obrigatoriamente incluí-los como flashcards (Frente: Pergunta/Exercício identificado, Verso: Resposta correta com explicação). Além disso, converta também as questões de quiz, desafios e questões ENEM geradas para este caderno em flashcards individuais adicionais!
 Crie um quiz com 4 perguntas objetivas (4 alternativas cada) e uma explicação de cada resposta.
 Crie 3 perguntas discursivas com respostas sugeridas.
 Crie 3 desafios no estilo de provas difíceis.
@@ -484,7 +482,7 @@ Instruções de Integração:
 1. EXPANDA o resumo ("summary") e as explicações por nível ("explanationBasic", "explanationIntermediate", "explanationAdvanced") incorporando o novo conteúdo de forma coesa e didática.
 2. Adicione novas "importantWords" (palavras importantes) identificadas no novo conteúdo. Mantenha também as anteriores.
 3. Atualize o "mindMap" adicionando novos nodes e edges relacionados aos novos tópicos, interligando-os de forma inteligente aos nodes existentes. Use IDs sequenciais únicos que não colidam com os IDs existentes.
-4. Crie de 3 a 5 NOVOS flashcards específicos para esse novo assunto.
+4. Crie de 3 a 5 NOVOS flashcards específicos para esse novo assunto. IMPORTANTE: Se você identificar quaisquer questões, exercícios ou enunciados de provas nas anotações, slides ou imagens fornecidas pelo usuário, você DEVE obrigatoriamente incluí-los como flashcards (Frente: Pergunta/Exercício identificado, Verso: Resposta correta com explicação). Além disso, converta também as novas questões de quiz, desafios e questões ENEM criadas para este caderno em flashcards individuais adicionais!
 5. Crie de 2 a 3 NOVOS quizzes objetivos, perguntas discursivas, desafios ou questões do ENEM baseadas no novo assunto.
 6. Adicione novos diagramas em formato ASCII se o novo assunto puder ser ilustrado visualmente.
 7. Mantenha ou adicione curiosidades e exemplos práticos.
