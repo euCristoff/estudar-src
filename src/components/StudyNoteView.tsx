@@ -2727,9 +2727,23 @@ export default function StudyNoteView({ note, onBack, onUpdateNote, onRecordQuiz
 
                     {/* Error message */}
                     {appendError && (
-                      <div className="p-3 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-xs font-semibold flex items-start gap-2">
-                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                        <p>{appendError}</p>
+                      <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs flex flex-col gap-2">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="w-4.5 h-4.5 shrink-0 text-rose-600 mt-0.5" />
+                          <div>
+                            <p className="font-extrabold text-rose-900">Erro temporário ao atualizar caderno</p>
+                            <p className="text-[11px] text-rose-700 font-medium mt-0.5">{appendError}</p>
+                          </div>
+                        </div>
+                        <div className="p-3 bg-white/70 border border-rose-100/50 rounded-xl">
+                          <p className="font-bold text-[11px] text-rose-900 flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+                            Nenhum dado do caderno foi modificado ou perdido!
+                          </p>
+                          <p className="text-[10px] text-rose-600 mt-0.5 leading-normal font-medium">
+                            Seu caderno de estudos continua intacto e seguro. Como esta instabilidade é passageira, aguarde alguns instantes e clique para tentar atualizar novamente.
+                          </p>
+                        </div>
                       </div>
                     )}
 

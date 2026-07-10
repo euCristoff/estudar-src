@@ -565,12 +565,18 @@ export default function App() {
                       </button>
                     </div>
                   )}
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <span className="relative flex h-1.5 w-1.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
-                    </span>
-                    <span className="text-[9px] text-slate-500 font-semibold font-sans">Acesso Ativo</span>
+                  <div className="flex flex-col gap-0.5 mt-0.5">
+                    <div className="flex items-center gap-1">
+                      <span className="relative flex h-1.5 w-1.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                      </span>
+                      <span className="text-[9px] text-slate-500 font-semibold font-sans">Acesso Ativo</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="w-1 h-1 rounded-full bg-blue-500 shrink-0"></span>
+                      <span className="text-[8px] text-blue-600 font-extrabold font-sans">100% Salvo Local</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -626,6 +632,10 @@ export default function App() {
                 <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wide">Backup & Progresso</span>
               </div>
               <span className="text-[9px] font-extrabold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-sm">SEGURO</span>
+            </div>
+            <div className="flex items-center gap-1.5 p-1.5 bg-emerald-50 border border-emerald-100 rounded-lg">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shrink-0"></span>
+              <span className="text-[9px] text-emerald-700 font-extrabold font-sans">SALVO AUTOMATICAMENTE</span>
             </div>
             <p className="text-[10px] text-slate-400 leading-normal">
               Como o preview e o site público têm domínios diferentes, o navegador separa seus dados. Use as opções abaixo para mover seu progresso!

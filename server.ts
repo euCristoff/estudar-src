@@ -23,6 +23,60 @@ const ai = new GoogleGenAI({
   },
 });
 
+// Helper for automatic retries with exponential backoff on transient errors (like 503 Service Unavailable)
+async function callGeminiWithRetry(fn: () => Promise<any>, retries = 3, delayMs = 1500) {
+  let lastError: any;
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      lastError = err;
+      const errorMsg = String(err.message || err.status || err || "").toLowerCase();
+      const isTemporary = errorMsg.includes("503") || 
+                          errorMsg.includes("unavailable") || 
+                          errorMsg.includes("high demand") || 
+                          errorMsg.includes("overloaded") || 
+                          errorMsg.includes("spikes in demand") ||
+                          errorMsg.includes("resource_exhausted") ||
+                          errorMsg.includes("exhausted");
+      if (isTemporary && i < retries - 1) {
+        console.warn(`[Gemini API] Falha temporária (tentativa ${i + 1}/${retries}). Tentando novamente em ${delayMs}ms... Erro: ${errorMsg}`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+        delayMs *= 2; // exponential backoff
+      } else {
+        throw err;
+      }
+    }
+  }
+  throw lastError;
+}
+
+// User-friendly translator for API errors that reassures the user about data preservation
+function translateGeminiError(error: any): string {
+  const errorMsg = String(error.message || error.status || error || "");
+  console.error("Original error from Gemini:", error);
+  
+  if (
+    errorMsg.includes("503") ||
+    errorMsg.includes("UNAVAILABLE") ||
+    errorMsg.includes("high demand") ||
+    errorMsg.includes("spikes in demand") ||
+    errorMsg.includes("overloaded")
+  ) {
+    return "Os servidores do Google Gemini estão sob alta demanda temporária (Erro 503). Nós já tentamos reconectar automaticamente, mas ainda está instável. Por favor, aguarde cerca de 10 a 15 segundos e clique para tentar novamente! Fique super tranquilo: todos os seus cadernos de estudos e progresso de flashcards já estão salvos e 100% seguros no seu navegador!";
+  }
+  
+  if (errorMsg.includes("ResourceExhausted") || errorMsg.includes("quota") || errorMsg.includes("429")) {
+    return "O limite temporário de requisições da IA foi alcançado. Por favor, aguarde cerca de 30 segundos antes de tentar novamente. Seus dados estão salvos e protegidos no seu navegador!";
+  }
+
+  if (errorMsg.includes("API key not found") || errorMsg.includes("API key")) {
+    return "A chave da API do Gemini (GEMINI_API_KEY) não foi configurada corretamente no servidor. Verifique as configurações.";
+  }
+
+  return `Ocorreu uma falha temporária na IA: ${errorMsg}. Por favor, tente novamente. Fique tranquilo, todo o seu progresso anterior continua salvo e seguro no seu dispositivo!`;
+}
+
 // Helper to sanitize and parse JSON response from Gemini
 function cleanAndParseJSON(text: string) {
   let cleaned = text.trim();
@@ -214,20 +268,22 @@ Você deve responder EXCLUSIVAMENTE com um objeto JSON válido, sem tags markdow
 
 Por favor, gere todo o conteúdo em Português do Brasil de forma rica, completa, com rigor acadêmico e com bastante profundidade, especialmente nas explicações e questões, para que o estudante de fato consiga aprender o assunto de ponta a ponta.`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: contents,
-      config: {
-        systemInstruction: systemInstruction,
-        responseMimeType: "application/json",
-      },
-    });
+    const response = await callGeminiWithRetry(() => 
+      ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: contents,
+        config: {
+          systemInstruction: systemInstruction,
+          responseMimeType: "application/json",
+        },
+      })
+    );
 
     const parsedData = cleanAndParseJSON(response.text || "{}");
     res.json(parsedData);
   } catch (error: any) {
     console.error("Erro na rota de geração de estudos:", error);
-    res.status(500).json({ error: error.message || "Erro desconhecido ao gerar os estudos." });
+    res.status(500).json({ error: translateGeminiError(error) });
   }
 });
 
@@ -296,14 +352,16 @@ MODO CHAT LIVRE:
 
     // Send the last message
     const lastMsg = messages[messages.length - 1];
-    const response = await chat.sendMessage({
-      message: lastMsg.text,
-    });
+    const response = await callGeminiWithRetry(() => 
+      chat.sendMessage({
+        message: lastMsg.text,
+      })
+    );
 
     res.json({ text: response.text });
   } catch (error: any) {
     console.error("Erro na rota de chat:", error);
-    res.status(500).json({ error: error.message || "Erro desconhecido no chat." });
+    res.status(500).json({ error: translateGeminiError(error) });
   }
 });
 
@@ -423,19 +481,21 @@ Retorne APENAS um array JSON contendo objetos no seguinte formato exato, sem com
       return res.status(400).json({ error: "Tipo de material inválido para geração." });
     }
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-      },
-    });
+    const response = await callGeminiWithRetry(() => 
+      ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+        },
+      })
+    );
 
     const items = cleanAndParseJSON(response.text);
     res.json({ items });
   } catch (error: any) {
     console.error("Erro na rota de gerar mais materiais:", error);
-    res.status(500).json({ error: error.message || "Erro interno no servidor ao gerar mais materiais de estudo." });
+    res.status(500).json({ error: translateGeminiError(error) });
   }
 });
 
@@ -570,20 +630,22 @@ Você deve responder EXCLUSIVAMENTE com um objeto JSON válido correspondente ao
 
 Certifique-se de que o retorno JSON contenha as informações originais do caderno E as novas de forma 100% integrada e enriquecida.`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: contents,
-      config: {
-        systemInstruction: systemInstruction,
-        responseMimeType: "application/json",
-      },
-    });
+    const response = await callGeminiWithRetry(() => 
+      ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: contents,
+        config: {
+          systemInstruction: systemInstruction,
+          responseMimeType: "application/json",
+        },
+      })
+    );
 
     const parsedData = cleanAndParseJSON(response.text || "{}");
     res.json(parsedData);
   } catch (error: any) {
     console.error("Erro na rota de adicionar conteúdo:", error);
-    res.status(500).json({ error: error.message || "Erro interno ao mesclar o novo conteúdo de estudos." });
+    res.status(500).json({ error: translateGeminiError(error) });
   }
 });
 

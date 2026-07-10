@@ -642,11 +642,20 @@ export default function Library({ notes, onOpenNote, onDeleteNote, onUpdateNote,
                   /* Forms */
                   <>
                     {generationError && (
-                      <div className="p-4 bg-red-50 border border-red-100 text-red-700 rounded-2xl flex items-start gap-2.5 text-xs">
-                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                      <div className="p-4.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl flex items-start gap-3 text-xs leading-relaxed">
+                        <AlertCircle className="w-4.5 h-4.5 shrink-0 text-rose-600 mt-0.5" />
                         <div>
-                          <p className="font-bold">Houve um imprevisto:</p>
-                          <p className="mt-0.5">{generationError}</p>
+                          <p className="font-extrabold text-sm text-rose-900">Houve um imprevisto temporário</p>
+                          <p className="mt-1 text-rose-700 font-medium">{generationError}</p>
+                          <div className="mt-3 p-3 bg-white/70 border border-rose-100/50 rounded-xl">
+                            <p className="font-bold text-[11px] text-rose-900 flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+                              Seus dados estão 100% seguros!
+                            </p>
+                            <p className="text-[10px] text-rose-600 mt-0.5 font-medium">
+                              Nenhuma de suas matérias, flashcards ou metas anteriores foram perdidos. Eles continuam guardados de forma segura no seu navegador. Como esta falha é temporária nos servidores do Google, você pode clicar para tentar novamente agora mesmo ou aguardar 10 segundos!
+                            </p>
+                          </div>
                         </div>
                       </div>
                     )}
