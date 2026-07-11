@@ -19,7 +19,8 @@ import {
   Camera,
   RotateCw,
   Video,
-  Zap
+  Zap,
+  Share2
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -117,6 +118,41 @@ export default function Library({ notes, onOpenNote, onDeleteNote, onUpdateNote,
 
   // Confirmation state for deleting a subject
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  // Shared Note Import states
+  const [isImportCodeModalOpen, setIsImportCodeModalOpen] = useState(false);
+  const [importCodeText, setImportCodeText] = useState("");
+  const [importError, setImportError] = useState<string | null>(null);
+
+  const handleImportNoteByCode = () => {
+    setImportError(null);
+    const trimmed = importCodeText.trim();
+    if (!trimmed) {
+      setImportError("Cole o código de compartilhamento antes de continuar.");
+      return;
+    }
+    try {
+      const jsonStr = decodeURIComponent(atob(trimmed).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      
+      const parsed = JSON.parse(jsonStr);
+      if (parsed && parsed.type === "estudaia_note" && parsed.note) {
+        const importedNote = parsed.note;
+        // Assign a new unique ID to avoid duplicates or collision
+        importedNote.id = `note-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+        onAddNote(importedNote);
+        setIsImportCodeModalOpen(false);
+        setImportCodeText("");
+        onOpenNote(importedNote.id, "content");
+      } else {
+        setImportError("Este código não é um caderno de estudos válido do EstudaIA.");
+      }
+    } catch (err) {
+      console.error(err);
+      setImportError("Código corrompido, incompleto ou inválido. Certifique-se de copiar o código inteiro.");
+    }
+  };
 
   // Extract all folders & tags
   const folders = Array.from(new Set(notes.map(n => n.folder).filter(Boolean))) as string[];
@@ -331,14 +367,28 @@ export default function Library({ notes, onOpenNote, onDeleteNote, onUpdateNote,
       {/* Library Left Sidebar */}
       <div id="library-sidebar" className="md:col-span-1 space-y-6">
         {/* Main Action Buttons */}
-        <button 
-          onClick={() => setIsGeneratingModalOpen(true)}
-          className="w-full py-3 bg-linear-to-r from-blue-600 to-sky-600 hover:from-blue-700 hover:to-sky-700 text-white font-bold rounded-2xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 text-sm cursor-pointer"
-        >
-          <Plus className="w-5 h-5" />
-          Importar Caderno / PDF
-          <Sparkles className="w-4 h-4 text-amber-200 fill-amber-200" />
-        </button>
+        <div className="space-y-2">
+          <button 
+            onClick={() => setIsGeneratingModalOpen(true)}
+            className="w-full py-3 bg-linear-to-r from-blue-600 to-sky-600 hover:from-blue-700 hover:to-sky-700 text-white font-bold rounded-2xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 text-sm cursor-pointer"
+          >
+            <Plus className="w-5 h-5" />
+            Importar Caderno / PDF
+            <Sparkles className="w-4 h-4 text-amber-200 fill-amber-200" />
+          </button>
+
+          <button 
+            onClick={() => {
+              setIsImportCodeModalOpen(true);
+              setImportError(null);
+              setImportCodeText("");
+            }}
+            className="w-full py-2 bg-slate-150/50 hover:bg-slate-200/55 text-slate-700 border border-slate-200/60 font-semibold rounded-2xl transition-all flex items-center justify-center gap-2 text-xs cursor-pointer shadow-2xs"
+          >
+            <Share2 className="w-4 h-4 text-blue-500" />
+            Importar por Código
+          </button>
+        </div>
 
         {/* Navigation Categories */}
         <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-2xs space-y-2">
@@ -928,6 +978,83 @@ export default function Library({ notes, onOpenNote, onDeleteNote, onUpdateNote,
                   className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer"
                 >
                   Confirmar Exclusão
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Import Shared Note via Code Modal */}
+      <AnimatePresence>
+        {isImportCodeModalOpen && (
+          <div id="import-code-modal" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-lg w-full overflow-hidden flex flex-col"
+            >
+              {/* Header */}
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+                <div className="flex items-center gap-2 text-slate-800">
+                  <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                    <Share2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base leading-tight">Importar por Código</h3>
+                    <p className="text-xs text-slate-400">Adicione uma revisão compartilhada por outra pessoa</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setIsImportCodeModalOpen(false)}
+                  className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 space-y-4">
+                {importError && (
+                  <div className="p-4 bg-rose-50 border border-rose-100 text-rose-800 rounded-2xl flex items-start gap-2.5 text-xs font-semibold">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
+                    <span>{importError}</span>
+                  </div>
+                )}
+
+                <p className="text-xs text-slate-500 leading-relaxed font-sans">
+                  Insira o código de compartilhamento gerado por outro usuário (gerado ao clicar em "Compartilhar" dentro de qualquer caderno de estudos) para carregar todo o material, flashcards, mapas mentais e questões de prova diretamente na sua biblioteca local!
+                </p>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block">Código de Compartilhamento</label>
+                  <textarea
+                    rows={6}
+                    placeholder="Cole o código aqui..."
+                    value={importCodeText}
+                    onChange={(e) => setImportCodeText(e.target.value)}
+                    className="w-full p-3 bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-[11px] font-mono leading-normal select-all"
+                  />
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-6 border-t border-slate-100 flex items-center justify-end gap-3 bg-slate-50">
+                <button
+                  type="button"
+                  onClick={() => setIsImportCodeModalOpen(false)}
+                  className="px-4 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-500 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                >
+                  Voltar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleImportNoteByCode}
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all shadow-md hover:shadow-lg flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  Importar Caderno
                 </button>
               </div>
             </motion.div>

@@ -499,6 +499,62 @@ Retorne APENAS um array JSON contendo objetos no seguinte formato exato, sem com
   }
 });
 
+// API endpoint to generate batch flashcards from user-pasted text
+app.post("/api/generate-batch-flashcards", async (req, res) => {
+  try {
+    const { rawText } = req.body;
+
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({
+        error: "GEMINI_API_KEY não configurada nas variáveis de ambiente do servidor.",
+      });
+    }
+
+    if (!rawText || !rawText.trim()) {
+      return res.status(400).json({ error: "O texto com as perguntas e respostas é obrigatório." });
+    }
+
+    const prompt = `Você é um assistente acadêmico de alta performance. O usuário forneceu uma lista de perguntas e respostas de forma informal, solta ou colada diretamente de um arquivo.
+Sua tarefa é analisar esse texto e extrair todas as perguntas e respostas de forma estruturada como Flashcards.
+
+REGRAS IMPORTANTES:
+1. Extraia cada pergunta e resposta individual e mapeie para "front" (a pergunta) e "back" (a resposta curta e didática).
+2. Se houver perguntas sem respostas explícitas no texto, pesquise na sua base de conhecimentos e elabore a resposta correta e altamente didática para o aluno.
+3. Se houver respostas soltas, elabore uma pergunta contextual apropriada.
+4. Corrija a ortografia e melhore a redação para que o material de revisão fique impecável, claro e profissional.
+5. Remova numerações redundantes como "1.", "Q1:", "R:" etc. do início dos textos.
+
+Texto do usuário:
+"""
+${rawText}
+"""
+
+Retorne APENAS um array JSON de objetos contendo exatamente as chaves "front" e "back", sem comentários, formatações extras ou markdown envolvente além do array bruto:
+[
+  {
+    "front": "Pergunta elaborada ou extraída",
+    "back": "Resposta elaborada ou extraída"
+  }
+]`;
+
+    const response = await callGeminiWithRetry(() => 
+      ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+        },
+      })
+    );
+
+    const items = cleanAndParseJSON(response.text);
+    res.json({ items });
+  } catch (error: any) {
+    console.error("Erro na rota de geração de flashcards em lote:", error);
+    res.status(500).json({ error: translateGeminiError(error) });
+  }
+});
+
 // API endpoint to update/append study notes with new teacher content
 app.post("/api/append-study", async (req, res) => {
   try {

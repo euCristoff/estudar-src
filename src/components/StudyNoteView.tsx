@@ -33,7 +33,9 @@ import {
   RefreshCw,
   Grab,
   Upload,
-  Pencil
+  Pencil,
+  Share2,
+  Copy
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -84,6 +86,107 @@ export default function StudyNoteView({ note, onBack, onUpdateNote, onRecordQuiz
   const [mmPan, setMmPan] = useState({ x: 0, y: 0 });
   const [mmDragging, setMmDragging] = useState(false);
   const mmDragStart = useRef({ x: 0, y: 0 });
+
+  // Share Notebook states
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareCode, setShareCode] = useState("");
+  const [isCodeCopied, setIsCodeCopied] = useState(false);
+
+  const handleOpenShareModal = () => {
+    try {
+      const shareData = {
+        type: "estudaia_note",
+        version: "1.0",
+        note: {
+          ...note,
+          isFavorite: false,
+          reviewCount: 0
+        }
+      };
+      const jsonStr = JSON.stringify(shareData);
+      const b64 = btoa(encodeURIComponent(jsonStr).replace(/%([0-9A-F]{2})/g, function(match, p1) {
+        return String.fromCharCode(parseInt(p1, 16));
+      }));
+      setShareCode(b64);
+      setIsShareModalOpen(true);
+      setIsCodeCopied(false);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleCopyShareCode = () => {
+    try {
+      navigator.clipboard.writeText(shareCode);
+      setIsCodeCopied(true);
+      setTimeout(() => setIsCodeCopied(false), 3000);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Batch Flashcard creation states
+  const [isBatchFcModalOpen, setIsBatchFcModalOpen] = useState(false);
+  const [batchFcText, setBatchFcText] = useState("");
+  const [isBatchGenerating, setIsBatchGenerating] = useState(false);
+  const [batchFcError, setBatchFcError] = useState<string | null>(null);
+
+  const handleCreateBatchFlashcards = async () => {
+    const trimmed = batchFcText.trim();
+    if (!trimmed) {
+      setBatchFcError("Por favor, cole ou digite suas perguntas e respostas antes de enviar.");
+      return;
+    }
+
+    setIsBatchGenerating(true);
+    setBatchFcError(null);
+
+    try {
+      const response = await fetch("/api/generate-batch-flashcards", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rawText: trimmed })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Erro ao processar as perguntas em lote.");
+      }
+
+      const data = await response.json();
+      if (!data.items || !Array.isArray(data.items) || data.items.length === 0) {
+        throw new Error("Não conseguimos identificar perguntas e respostas no texto. Certifique-se de colocar um conteúdo válido.");
+      }
+
+      const newFcs: Flashcard[] = data.items.map((item: any, i: number) => ({
+        id: `fc-batch-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 6)}`,
+        front: item.front,
+        back: item.back,
+        box: 1,
+        nextReviewDate: new Date().toISOString(),
+        canAppearInQuiz: true
+      }));
+
+      const updated = [...flashcardsList, ...newFcs];
+      setFlashcardsList(updated);
+      
+      onUpdateNote({
+        ...note,
+        flashcards: updated
+      });
+
+      setIsBatchFcModalOpen(false);
+      setBatchFcText("");
+      if (onCompleteOnboardingTask) {
+        onCompleteOnboardingTask("reviewFlashcards");
+      }
+    } catch (err: any) {
+      console.error(err);
+      setBatchFcError(err.message || "Erro de rede ao gerar flashcards em lote.");
+    } finally {
+      setIsBatchGenerating(false);
+    }
+  };
 
   const handleMmMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
@@ -826,6 +929,15 @@ export default function StudyNoteView({ note, onBack, onUpdateNote, onRecordQuiz
             {note.isFavorite ? "Favoritado" : "Favoritar"}
           </button>
 
+          <button 
+            onClick={handleOpenShareModal}
+            className="px-3 py-1.5 h-8 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer text-slate-600 shadow-2xs"
+            title="Gerar código para compartilhar este caderno de estudos com outra pessoa"
+          >
+            <Share2 className="w-3.5 h-3.5 text-blue-500" />
+            Compartilhar
+          </button>
+
           <button
             onClick={() => setIsAppendModalOpen(true)}
             className="px-3.5 py-1.5 h-8 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs border border-blue-700"
@@ -981,6 +1093,30 @@ export default function StudyNoteView({ note, onBack, onUpdateNote, onRecordQuiz
                   </div>
                 </div>
               )}
+
+              {/* Card to Add More Topics directly inside the Notebook view */}
+              <div className="bg-linear-to-r from-blue-500/10 to-indigo-500/10 border border-blue-200/50 rounded-3xl p-6 shadow-2xs space-y-4 text-left">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm shrink-0">
+                    <Sparkles className="w-5 h-5 fill-white/15 text-blue-200" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-extrabold text-slate-800 font-sans leading-snug">
+                      Colocar Mais Assunto neste Caderno
+                    </h4>
+                    <p className="text-xs text-slate-500 leading-relaxed font-sans">
+                      Adicione novos slides de aula, tópicos, anotações ou imagens de provas para mesclar e expandir este material.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsAppendModalOpen(true)}
+                  className="w-full py-2.5 bg-white hover:bg-slate-50 text-blue-600 border border-blue-200 hover:border-blue-300 font-bold rounded-2xl text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-3xs"
+                >
+                  <Plus className="w-4 h-4" />
+                  Mesclar Novos Tópicos com IA 🚀
+                </button>
+              </div>
             </div>
 
             {/* Right sidebar of content: Keywords glossary & curiosities */}
@@ -1863,30 +1999,44 @@ export default function StudyNoteView({ note, onBack, onUpdateNote, onRecordQuiz
               )}
 
               {!showCreateFcForm ? (
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <button
                     type="button"
                     onClick={() => setShowCreateFcForm(true)}
-                    className="flex-1 py-3 border border-dashed border-blue-200 hover:border-blue-400 bg-blue-50/10 hover:bg-blue-50/40 text-blue-600 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs font-sans"
+                    className="py-3.5 border border-dashed border-blue-200 hover:border-blue-400 bg-blue-50/10 hover:bg-blue-50/40 text-blue-600 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs font-sans"
                   >
                     <Plus className="w-4 h-4" />
-                    Criar Flashcard Manual
+                    Criar Manual
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsBatchFcModalOpen(true);
+                      setBatchFcText("");
+                      setBatchFcError(null);
+                    }}
+                    className="py-3.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs font-sans"
+                  >
+                    <Zap className="w-4 h-4 text-amber-500 fill-amber-500/20 animate-pulse" />
+                    Lote de Questões ⚡
+                  </button>
+
                   <button
                     type="button"
                     disabled={isAiGenerating}
                     onClick={() => handleGenerateMoreMaterials("flashcards")}
-                    className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 text-white rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs font-sans"
+                    className="py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 text-white rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs font-sans"
                   >
                     {isAiGenerating ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Gerando com IA...</span>
+                        <span>Gerando...</span>
                       </>
                     ) : (
                       <>
                         <Sparkles className="w-4 h-4" />
-                        <span>Gerar +3 Flashcards com IA ✨</span>
+                        <span>Gerar +3 com IA ✨</span>
                       </>
                     )}
                   </button>
@@ -2740,13 +2890,13 @@ export default function StudyNoteView({ note, onBack, onUpdateNote, onRecordQuiz
                     {/* Text Field */}
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
-                        Descreva os novos assuntos da prova:
+                        Cole novos slides, digite anotações ou digite os novos assuntos:
                       </label>
                       <textarea
                         value={appendTopic}
                         onChange={(e) => setAppendTopic(e.target.value)}
-                        placeholder="Ex: Formula de bhaskara para achar o x, o delta, e também como calcular o vértice da parábola..."
-                        rows={4}
+                        placeholder="Ex: Cole aqui slides copiados, anotações de aula do caderno, ou digite: 'Adicionar assunto de Equações de Segundo Grau, fórmula de Bhaskara e Delta'..."
+                        rows={5}
                         className="w-full p-3 border border-slate-200 rounded-2xl text-xs focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-slate-50/50 focus:bg-white transition-all font-sans resize-none"
                       />
                     </div>
@@ -2924,6 +3074,211 @@ export default function StudyNoteView({ note, onBack, onUpdateNote, onRecordQuiz
                     </button>
                   </div>
                 </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* MODAL: COMPARTILHAR CADERNO DE ESTUDOS */}
+        <AnimatePresence>
+          {isShareModalOpen && (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                className="bg-white rounded-3xl max-w-lg w-full border border-slate-100 shadow-2xl p-6 relative overflow-hidden flex flex-col"
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+                  <div className="flex items-center gap-2 text-left">
+                    <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                      <Share2 className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-extrabold text-slate-800 tracking-tight">Compartilhar Caderno</h3>
+                      <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">{note.subject} • {note.title}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsShareModalOpen(false)}
+                    className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Body */}
+                <div className="space-y-4 text-left">
+                  <p className="text-xs text-slate-500 leading-relaxed font-sans">
+                    Copie o código gerado abaixo e envie para o seu colega. Ele poderá importar este caderno inteirinho contendo o resumo da matéria, os flashcards de memorização, mapas mentais e todos os exercícios personalizados gerados!
+                  </p>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block">Código de Compartilhamento</label>
+                    <div className="relative">
+                      <textarea
+                        readOnly
+                        rows={5}
+                        value={shareCode}
+                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-mono leading-normal select-all outline-none focus:ring-1 focus:ring-blue-500 pr-2"
+                        onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+                      />
+                      
+                      <button
+                        type="button"
+                        onClick={handleCopyShareCode}
+                        className={`absolute bottom-3 right-3 px-3.5 h-8 rounded-lg text-[10px] font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs ${
+                          isCodeCopied 
+                            ? "bg-emerald-600 hover:bg-emerald-700 text-white" 
+                            : "bg-blue-600 hover:bg-blue-700 text-white"
+                        }`}
+                      >
+                        {isCodeCopied ? (
+                          <>
+                            <Check className="w-3.5 h-3.5" />
+                            Copiado!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            Copiar Código
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {isCodeCopied && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-3 bg-emerald-50 border border-emerald-100 text-emerald-800 rounded-xl text-[11px] font-semibold flex items-center gap-2"
+                    >
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>Código copiado com sucesso! Agora você já pode enviar para quem quiser.</span>
+                    </motion.div>
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center justify-end gap-2 pt-4 mt-4 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setIsShareModalOpen(false)}
+                    className="px-4 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                  >
+                    Fechar
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* MODAL: GERAR FLASHCARDS EM LOTE */}
+        <AnimatePresence>
+          {isBatchFcModalOpen && (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                className="bg-white rounded-3xl max-w-xl w-full border border-slate-100 shadow-2xl p-6 relative overflow-hidden flex flex-col max-h-[90vh]"
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+                  <div className="flex items-center gap-2 text-left">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600">
+                      <Zap className="w-5 h-5 fill-amber-500/20 animate-pulse" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-extrabold text-slate-800 tracking-tight">Criar Flashcards em Lote</h3>
+                      <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Extração Inteligente com IA</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (!isBatchGenerating) {
+                        setIsBatchFcModalOpen(false);
+                        setBatchFcText("");
+                        setBatchFcError(null);
+                      }
+                    }}
+                    className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {isBatchGenerating ? (
+                  /* Loading State */
+                  <div className="flex-1 py-12 flex flex-col items-center justify-center text-center space-y-6">
+                    <div className="relative">
+                      <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center text-amber-600 animate-pulse">
+                        <Zap className="w-10 h-10 fill-amber-500/10 animate-spin" />
+                      </div>
+                      <div className="absolute inset-0 rounded-full border-4 border-amber-500/20 animate-ping" />
+                    </div>
+                    
+                    <div className="space-y-2 max-w-md">
+                      <h4 className="text-sm font-bold text-slate-800 animate-pulse">Analisando e gerando cartas...</h4>
+                      <p className="text-xs text-slate-500 font-medium px-4 leading-relaxed">
+                        A IA está estruturando suas perguntas e respostas em flashcards didáticos de memorização ativa.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  /* Form State */
+                  <div className="flex-1 overflow-y-auto space-y-4 pr-1 text-left">
+                    <p className="text-xs text-slate-500 leading-relaxed font-sans">
+                      Cole até 10, 20 ou mais perguntas e respostas que você já possui prontas (ex: copiadas de um PDF, site ou rascunho). A IA vai analisar tudo automaticamente, corrigir erros, preencher respostas faltantes e gerar cartões prontos!
+                    </p>
+
+                    {batchFcError && (
+                      <div className="p-3 bg-red-50 border border-red-100 text-red-700 text-xs rounded-xl flex items-center gap-2 font-sans">
+                        <AlertCircle className="w-4 h-4 shrink-0" />
+                        <span>{batchFcError}</span>
+                      </div>
+                    )}
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                        Cole as Perguntas e Respostas abaixo:
+                      </label>
+                      <textarea
+                        value={batchFcText}
+                        onChange={(e) => setBatchFcText(e.target.value)}
+                        placeholder={`Exemplo de como colar:\n1. O que é mitocôndria? Organela responsável pela respiração celular.\n2. Quem descobriu o Brasil? Pedro Álvares Cabral em 1500.\n\n(Ou cole suas perguntas e respostas em qualquer formato!)`}
+                        rows={8}
+                        className="w-full p-3.5 border border-slate-200 rounded-2xl text-xs focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 bg-slate-50/50 focus:bg-white transition-all font-mono leading-relaxed resize-none"
+                      />
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsBatchFcModalOpen(false);
+                          setBatchFcText("");
+                          setBatchFcError(null);
+                        }}
+                        className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCreateBatchFlashcards}
+                        className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs border border-amber-600"
+                      >
+                        <Sparkles className="w-4 h-4" />
+                        Criar Flashcards com IA ⚡
+                      </button>
+                    </div>
+                  </div>
+                )}
               </motion.div>
             </div>
           )}
