@@ -2729,18 +2729,19 @@ export default function StudyNoteView({ note, onBack, onUpdateNote, onRecordQuiz
                         Fotos de anotações ou slides do professor (Opcional):
                       </label>
                       
+                      <input
+                        type="file"
+                        ref={appendFileInputRef}
+                        onChange={handleAppendFileChange}
+                        multiple
+                        accept="image/*"
+                        className="hidden"
+                        onClick={(e) => e.stopPropagation()}
+                      />
                       <div 
                         onClick={() => appendFileInputRef.current?.click()}
                         className="border-2 border-dashed border-slate-200 hover:border-blue-500 hover:bg-blue-50/10 rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 group"
                       >
-                        <input
-                          type="file"
-                          ref={appendFileInputRef}
-                          onChange={handleAppendFileChange}
-                          multiple
-                          accept="image/*"
-                          className="hidden"
-                        />
                         <div className="w-10 h-10 rounded-xl bg-slate-50 group-hover:bg-blue-50 text-slate-400 group-hover:text-blue-500 flex items-center justify-center transition-colors">
                           <Upload className="w-5 h-5" />
                         </div>

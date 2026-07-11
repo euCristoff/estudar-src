@@ -698,6 +698,15 @@ export default function Library({ notes, onOpenNote, onDeleteNote, onUpdateNote,
                         )}
                       </div>
                       
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*,application/pdf"
+                        multiple
+                        onChange={handleFileChange}
+                        className="hidden"
+                        onClick={(e) => e.stopPropagation()}
+                      />
                       <div
                         onDragEnter={handleDrag}
                         onDragOver={handleDrag}
@@ -710,14 +719,6 @@ export default function Library({ notes, onOpenNote, onDeleteNote, onUpdateNote,
                             : "border-slate-200 hover:border-blue-400 bg-slate-50/50"
                         }`}
                       >
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*,application/pdf"
-                          multiple
-                          onChange={handleFileChange}
-                          className="hidden"
-                        />
                         {uploadedFiles.length === 0 ? (
                           <div className="space-y-2">
                             <div className="p-3 bg-blue-50 text-blue-600 rounded-xl w-fit mx-auto">
@@ -803,7 +804,7 @@ export default function Library({ notes, onOpenNote, onDeleteNote, onUpdateNote,
                         </div>
                         <button
                           type="button"
-                          onClick={() => fileInputRef.current?.click()}
+                          onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
                           className="w-full flex items-center justify-center gap-2 p-2.5 border border-dashed border-blue-200 hover:border-blue-400 bg-blue-50/20 hover:bg-blue-50/50 text-blue-600 rounded-xl text-xs font-bold transition-all cursor-pointer"
                         >
                           <Plus className="w-4 h-4" />
