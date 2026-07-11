@@ -30,9 +30,26 @@ import { motion, AnimatePresence } from "motion/react";
 export default function App() {
   const [notes, setNotes] = useState<StudyNote[]>([]);
   const [stats, setStats] = useState<UserStats>(INITIAL_STATS);
-  const [activeView, setActiveView] = useState<"dashboard" | "library">("dashboard");
-  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+  const [activeView, setActiveView] = useState<"dashboard" | "library">(() => {
+    return (localStorage.getItem("estudaia_active_view") as any) || "dashboard";
+  });
+  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(() => {
+    return localStorage.getItem("estudaia_selected_note_id") || null;
+  });
   const [initialStudyTab, setInitialStudyTab] = useState<"content" | "flashcards" | "practice" | "professor">("flashcards");
+
+  // Sync active view and selected note ID to localStorage to prevent tab suspension data loss
+  useEffect(() => {
+    localStorage.setItem("estudaia_active_view", activeView);
+  }, [activeView]);
+
+  useEffect(() => {
+    if (selectedNoteId) {
+      localStorage.setItem("estudaia_selected_note_id", selectedNoteId);
+    } else {
+      localStorage.removeItem("estudaia_selected_note_id");
+    }
+  }, [selectedNoteId]);
   
   // Mobile navigation drawer toggle
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);

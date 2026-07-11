@@ -178,6 +178,31 @@ export default function StudyNoteView({ note, onBack, onUpdateNote, onRecordQuiz
   const appendFileInputRef = useRef<HTMLInputElement>(null);
   const appendLoaderIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Load draft when note.id changes
+  useEffect(() => {
+    setIsAppendModalOpen(localStorage.getItem(`estudaia_draft_append_open_${note.id}`) === "true");
+    setAppendTopic(localStorage.getItem(`estudaia_draft_append_topic_${note.id}`) || "");
+    try {
+      const saved = localStorage.getItem(`estudaia_draft_append_files_${note.id}`);
+      setAppendUploadedFiles(saved ? JSON.parse(saved) : []);
+    } catch (e) {
+      setAppendUploadedFiles([]);
+    }
+  }, [note.id]);
+
+  // Save draft whenever changes occur to prevent tab suspension data loss
+  useEffect(() => {
+    localStorage.setItem(`estudaia_draft_append_open_${note.id}`, isAppendModalOpen ? "true" : "false");
+  }, [isAppendModalOpen, note.id]);
+
+  useEffect(() => {
+    localStorage.setItem(`estudaia_draft_append_topic_${note.id}`, appendTopic);
+  }, [appendTopic, note.id]);
+
+  useEffect(() => {
+    localStorage.setItem(`estudaia_draft_append_files_${note.id}`, JSON.stringify(appendUploadedFiles));
+  }, [appendUploadedFiles, note.id]);
+
   const APPEND_LOADER_PHRASES = [
     "Professor Virtual está analisando os novos tópicos fornecidos...",
     "Lendo suas anotações e fotos anexadas...",
@@ -317,6 +342,9 @@ export default function StudyNoteView({ note, onBack, onUpdateNote, onRecordQuiz
       // Reset state
       setAppendTopic("");
       setAppendUploadedFiles([]);
+      localStorage.removeItem(`estudaia_draft_append_open_${note.id}`);
+      localStorage.removeItem(`estudaia_draft_append_topic_${note.id}`);
+      localStorage.removeItem(`estudaia_draft_append_files_${note.id}`);
     } catch (err: any) {
       console.error("Erro ao adicionar conteúdo:", err);
       setAppendError(err.message || "Não foi possível conectar com o servidor para atualizar o caderno de estudos.");

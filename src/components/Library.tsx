@@ -59,10 +59,16 @@ export default function Library({ notes, onOpenNote, onDeleteNote, onUpdateNote,
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
   
-  // Generation Modal States
-  const [isGeneratingModalOpen, setIsGeneratingModalOpen] = useState(false);
-  const [uploadSubject, setUploadSubject] = useState("Biologia");
-  const [uploadTopic, setUploadTopic] = useState("");
+  // Generation Modal States with draft restoration
+  const [isGeneratingModalOpen, setIsGeneratingModalOpen] = useState(() => {
+    return localStorage.getItem("estudaia_draft_gen_open") === "true";
+  });
+  const [uploadSubject, setUploadSubject] = useState(() => {
+    return localStorage.getItem("estudaia_draft_gen_subject") || "Biologia";
+  });
+  const [uploadTopic, setUploadTopic] = useState(() => {
+    return localStorage.getItem("estudaia_draft_gen_topic") || "";
+  });
   
   // Multiple Uploaded Files
   interface UploadedFile {
@@ -71,7 +77,31 @@ export default function Library({ notes, onOpenNote, onDeleteNote, onUpdateNote,
     base64: string;
     mimeType: string;
   }
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>(() => {
+    try {
+      const saved = localStorage.getItem("estudaia_draft_gen_files");
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  // Save drafts to localStorage to prevent tab suspension data loss
+  useEffect(() => {
+    localStorage.setItem("estudaia_draft_gen_open", isGeneratingModalOpen ? "true" : "false");
+  }, [isGeneratingModalOpen]);
+
+  useEffect(() => {
+    localStorage.setItem("estudaia_draft_gen_subject", uploadSubject);
+  }, [uploadSubject]);
+
+  useEffect(() => {
+    localStorage.setItem("estudaia_draft_gen_topic", uploadTopic);
+  }, [uploadTopic]);
+
+  useEffect(() => {
+    localStorage.setItem("estudaia_draft_gen_files", JSON.stringify(uploadedFiles));
+  }, [uploadedFiles]);
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
@@ -193,6 +223,10 @@ export default function Library({ notes, onOpenNote, onDeleteNote, onUpdateNote,
       // Reset inputs
       setUploadedFiles([]);
       setUploadTopic("");
+      localStorage.removeItem("estudaia_draft_gen_open");
+      localStorage.removeItem("estudaia_draft_gen_subject");
+      localStorage.removeItem("estudaia_draft_gen_topic");
+      localStorage.removeItem("estudaia_draft_gen_files");
       onOpenNote(newNote.id, "flashcards");
     } catch (err: any) {
       console.error("Erro ao gerar nota:", err);
