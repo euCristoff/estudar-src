@@ -32,7 +32,8 @@ import {
   Download,
   RefreshCw,
   Grab,
-  Upload
+  Upload,
+  Pencil
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -149,6 +150,11 @@ export default function StudyNoteView({ note, onBack, onUpdateNote, onRecordQuiz
   const [newFcBack, setNewFcBack] = useState("");
   const [newFcCanQuiz, setNewFcCanQuiz] = useState(true);
   const [showCreateFcForm, setShowCreateFcForm] = useState(false);
+
+  // Flashcards Editing States
+  const [editingFc, setEditingFc] = useState<Flashcard | null>(null);
+  const [editingFcFront, setEditingFcFront] = useState("");
+  const [editingFcBack, setEditingFcBack] = useState("");
 
   // AI generation states
   const [isAiGenerating, setIsAiGenerating] = useState(false);
@@ -494,6 +500,33 @@ export default function StudyNoteView({ note, onBack, onUpdateNote, onRecordQuiz
       setCurrentFcIndex(Math.max(0, updatedList.length - 1));
     }
     setIsFcFlipped(false);
+  };
+
+  // Edit flashcard function
+  const handleSaveEditedFlashcard = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingFc || !editingFcFront.trim() || !editingFcBack.trim()) return;
+
+    const updatedList = flashcardsList.map(fc => {
+      if (fc.id === editingFc.id) {
+        return {
+          ...fc,
+          front: editingFcFront.trim(),
+          back: editingFcBack.trim()
+        };
+      }
+      return fc;
+    });
+
+    setFlashcardsList(updatedList);
+    onUpdateNote({
+      ...note,
+      flashcards: updatedList
+    });
+
+    setEditingFc(null);
+    setEditingFcFront("");
+    setEditingFcBack("");
   };
 
   // Memoized Quiz combination: appends custom flashcards that have canAppearInQuiz enabled
@@ -1601,6 +1634,20 @@ export default function StudyNoteView({ note, onBack, onUpdateNote, onRecordQuiz
                     <span className="font-mono bg-blue-50 text-blue-600 px-2.5 py-1 rounded-lg font-bold">
                       Box {flashcardsList[currentFcIndex]?.box || 1}
                     </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const currentFc = flashcardsList[currentFcIndex];
+                        setEditingFc(currentFc);
+                        setEditingFcFront(currentFc.front);
+                        setEditingFcBack(currentFc.back);
+                      }}
+                      title="Editar este flashcard"
+                      className="p-1.5 hover:bg-blue-50 text-slate-400 hover:text-blue-600 rounded-lg transition-all cursor-pointer flex items-center justify-center border border-transparent hover:border-blue-100"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
                     <button
                       type="button"
                       onClick={() => handleDeleteFlashcard(flashcardsList[currentFcIndex].id)}
@@ -2772,6 +2819,82 @@ export default function StudyNoteView({ note, onBack, onUpdateNote, onRecordQuiz
                     </div>
                   </div>
                 )}
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* MODAL: EDITAR FLASHCARD */}
+        <AnimatePresence>
+          {editingFc && (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                className="bg-white rounded-3xl max-w-md w-full border border-slate-100 shadow-2xl p-6 relative overflow-hidden flex flex-col"
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+                  <div className="flex items-center gap-2 text-left">
+                    <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                      <Pencil className="w-4.5 h-4.5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-extrabold text-slate-800 tracking-tight">Editar Pergunta e Resposta</h3>
+                      <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Ajuste seu flashcard</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setEditingFc(null)}
+                    className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSaveEditedFlashcard} className="space-y-4 text-left">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-extrabold text-slate-500 uppercase font-sans">Pergunta / Frente</label>
+                    <textarea
+                      required
+                      rows={3}
+                      value={editingFcFront}
+                      onChange={(e) => setEditingFcFront(e.target.value)}
+                      placeholder="Qual é a pergunta do flashcard?"
+                      className="w-full p-3 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500 bg-slate-50/30 focus:bg-white transition-all resize-none font-sans"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-extrabold text-slate-500 uppercase font-sans">Resposta / Verso</label>
+                    <textarea
+                      required
+                      rows={3}
+                      value={editingFcBack}
+                      onChange={(e) => setEditingFcBack(e.target.value)}
+                      placeholder="Qual é a resposta sugerida?"
+                      className="w-full p-3 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500 bg-slate-50/30 focus:bg-white transition-all resize-none font-sans"
+                    />
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setEditingFc(null)}
+                      className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs border border-blue-700"
+                    >
+                      Salvar Alterações
+                    </button>
+                  </div>
+                </form>
               </motion.div>
             </div>
           )}
