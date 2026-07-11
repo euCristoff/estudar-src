@@ -24,146 +24,231 @@ export const INITIAL_STATS: UserStats = {
 
 export const INITIAL_NOTES: StudyNote[] = [
   {
-    id: "note-primeiros-passos",
-    title: "Como Usar o EstudaIA (Guia Prático)",
-    subject: "Português",
+    id: "note-tabuada-1-ao-10",
+    title: "Tabuada de Multiplicação (1 ao 10)",
+    subject: "Matemática",
     date: new Date().toISOString(),
-    summary: "O EstudaIA é o seu ecossistema inteligente de estudos. Aqui, você pode importar suas anotações do Notion, visualizar as conexões automáticas em um Grafo de Conhecimento, treinar com Quizzes do ENEM, revisar com Flashcards e interagir com um Professor Virtual por chat.",
-    explanationBasic: "Seja muito bem-vindo ao EstudaIA! Esta plataforma foi desenhada para transformar anotações passivas em ferramentas de estudo ativo. Quando você cria ou importa uma nota: 1) O 'Caderno de Estudos' resume o conteúdo em níveis e destaca termos importantes. 2) O 'Mapa Mental' desenha conexões visuais estruturadas. 3) Os 'Flashcards' ajudam você a fixar a matéria de forma interativa. 4) O 'Praticar Quizzes' simula exames reais para treinar seu cérebro. 5) O 'Professor Virtual' bate um papo por chat para testar suas dúvidas!",
-    explanationIntermediate: "Para usar a plataforma ao máximo, o fluxo recomendado é: Primeiro, use a aba 'Biblioteca (Notion)' para adicionar ou criar um caderno de estudos sobre qualquer tema. A IA gerará automaticamente explicações estruturadas nos níveis básico, intermediário e avançado, além de diagramas didáticos em formato de texto, baralho de flashcards e simulados com questões inéditas e comentadas. Conforme você responde às questões, o sistema rastreia seus pontos fracos e atualiza seu progresso e streak no Dashboard!",
-    explanationAdvanced: "A fundamentação pedagógica do EstudaIA repousa sobre a Prática de Lembrança Ativa (Active Recall) e a Repetição Espaçada (Spaced Repetition). O sistema de Flashcards utiliza uma adaptação do consagrado sistema Leitner, em que os cartões avançam de caixa (Box 1 a 5) ao serem acertados, aumentando o intervalo para a próxima revisão. O módulo de 'Plano de Estudos Inteligente' analisa as estatísticas de erro coletadas em tempo real e calcula de forma dinâmica as prioridades de foco semanais, assegurando que o estudante despenda energia nos seus pontos mais vulneráveis.",
+    summary: "A tabuada é a base de toda a aritmética e cálculo mental. Compreender seus padrões lógicos e automatizar as respostas de 1 a 10 ajuda a acelerar o raciocínio, resolver problemas do dia a dia e dominar conceitos mais complexos como frações, divisão e álgebra.",
+    explanationBasic: "A multiplicação é simplesmente uma soma repetida do mesmo número. Por exemplo: 3 x 4 significa somar o número 4 três vezes (4 + 4 + 4 = 12), ou somar o número 3 quatro vezes (3 + 3 + 3 + 3 = 12). \n\nAlgumas regras básicas tornam tudo mais fácil:\n- **Tabuada do 1**: Qualquer número multiplicado por 1 é ele mesmo (ex: 1 x 8 = 8).\n- **Tabuada do 2**: É sempre o dobro do número (ex: 2 x 6 = 12).\n- **Tabuada do 5**: Sempre termina em 0 ou 5, pulando de 5 em 5 (ex: 5, 10, 15, 20...).\n- **Tabuada do 10**: Basta colocar um número zero à direita do número multiplicado (ex: 10 x 7 = 70).",
+    explanationIntermediate: "Para dominar as tabuadas intermediárias (como 3, 4, 6, 7, 8 e 9), use truques de associação e a propriedade comutativa. A propriedade comutativa garante que 'a ordem dos fatores não altera o produto': sabendo que 5 x 6 = 30, você automaticamente sabe que 6 x 5 = 30! Isso reduz pela metade o número de contas que você precisa decorar.\n\nOutros truques práticos:\n- **Tabuada do 4**: É o dobro do dobro (ex: para fazer 4 x 7, pense no dobro de 7, que é 14, e dobre novamente: 28).\n- **Tabuada do 9**: A soma dos dois algarismos do resultado é sempre igual a 9! (ex: 9 x 2 = 18 [1+8=9], 9 x 5 = 45 [4+5=9], 9 x 8 = 72 [7+2=9]). Além disso, o primeiro algarismo do resultado é sempre o número que você está multiplicando menos 1 (ex: 9 x 8 -> dezenas: 8 - 1 = 7, unidades: o que falta para 9, que é 2. Logo, 72!).",
+    explanationAdvanced: "A automação de cálculos mentais (saber instantaneamente sem contar nos dedos) é chamada de 'Automação Cognitiva'. Ao fixar que 7 x 8 = 56 ou 6 x 9 = 54 na memória de longo prazo, o cérebro economiza espaço de processamento da memória de trabalho. Isso permite que você resolva problemas matemáticos difíceis, como equações e geometria, com muito menos cansaço mental.\n\nTécnicas de memorização ativa, como o método Leitner com flashcards (separando as contas que você erra das que você já sabe) e simulações rápidas de quizzes, provaram cientificamente ser 80% mais eficazes do que apenas ler a tabela repetidamente.",
     importantWords: [
-      { word: "Notion", definition: "Aplicativo de produtividade e escrita onde você mantém anotações e pode integrá-las ao EstudaIA." },
-      { word: "Active Recall", definition: "Metodologia ativa que consiste em testar a si mesmo antes de rever a matéria, forçando o cérebro a recuperar a informação." },
-      { word: "Repetição Espaçada", definition: "Técnica de memorização de longo prazo que consiste em revisar conteúdos em intervalos de tempo crescentes." },
-      { word: "Professor Virtual", definition: "Assistente interativo de IA treinado para realizar simulações de prova oral e responder dúvidas específicas." }
+      { word: "Fatores", definition: "Os números que estão sendo multiplicados entre si para gerar o produto final (ex: em 3 x 4 = 12, os fatores são 3 e 4)." },
+      { word: "Produto", definition: "O resultado obtido através da operação de multiplicação." },
+      { word: "Comutatividade", definition: "Propriedade que permite alterar a ordem dos fatores sem alterar o resultado (a x b = b x a)." },
+      { word: "Dobro", definition: "O valor de um número multiplicado por 2. É a base da tabuada do 2, do 4 e do 8." }
     ],
     mindMap: {
       nodes: [
-        { id: "1", label: "EstudaIA", type: "core" },
-        { id: "2", label: "Importação Notion", type: "main" },
-        { id: "3", label: "Métodos Ativos", type: "main" },
-        { id: "4", label: "Biblioteca", type: "sub" },
-        { id: "5", label: "Grafo de Conexões", type: "sub" },
-        { id: "6", label: "Repetição Espaçada", type: "sub" },
-        { id: "7", label: "Quizzes & Simulados", type: "sub" },
-        { id: "8", label: "Professor Virtual", type: "sub" }
+        { id: "1", label: "Tabuada 1 a 10", type: "core" },
+        { id: "2", label: "Padrões de Pares (2, 4, 8)", type: "main" },
+        { id: "3", label: "Padrões Especiais (5, 9, 10)", type: "main" },
+        { id: "4", label: "Dobro do Dobro", type: "sub" },
+        { id: "5", label: "Soma de dígitos = 9", type: "sub" },
+        { id: "6", label: "Termina em 0 ou 5", type: "sub" },
+        { id: "7", label: "Propriedade Comutativa", type: "sub" }
       ],
       edges: [
         { from: "1", to: "2" },
         { from: "1", to: "3" },
         { from: "2", to: "4" },
-        { from: "2", to: "5" },
+        { from: "3", to: "5" },
         { from: "3", to: "6" },
-        { from: "3", to: "7" },
-        { from: "3", to: "8" }
+        { from: "1", to: "7" }
       ]
     },
     flashcards: [
       {
-        id: "fc-onboarding-1",
-        front: "Como o progresso das matérias é atualizado no EstudaIA?",
-        back: "Ao acertar questões nos Quizzes das matérias, seu progresso no Dashboard sobe automaticamente!",
+        id: "fc-tab-2-8",
+        front: "Quanto é 2 x 8?",
+        back: "16 (Dica: o dobro de 8)",
         box: 1,
         nextReviewDate: new Date().toISOString()
       },
       {
-        id: "fc-onboarding-2",
-        front: "O que acontece ao marcar 'Acertei / Lembrei' em um flashcard?",
-        back: "O cartão avança de caixa (Box 1 a 5) e passará a ser revisado com menos frequência, otimizando seu foco.",
+        id: "fc-tab-3-7",
+        front: "Quanto é 3 x 7?",
+        back: "21 (Três grupos de sete: 7 + 7 + 7)",
         box: 1,
         nextReviewDate: new Date().toISOString()
       },
       {
-        id: "fc-onboarding-3",
-        front: "Como posso garantir que não vou perder minhas notas criadas?",
-        back: "O app salva tudo no seu navegador automaticamente, mas você também pode ir na aba lateral e clicar em 'Exportar' para baixar um arquivo JSON de backup.",
+        id: "fc-tab-4-6",
+        front: "Quanto é 4 x 6?",
+        back: "24 (Dica: o dobro de 12, que é 2 x 6)",
+        box: 1,
+        nextReviewDate: new Date().toISOString()
+      },
+      {
+        id: "fc-tab-5-9",
+        front: "Quanto é 5 x 9?",
+        back: "45 (Dica: metade de 10 x 9, que seria 90)",
+        box: 1,
+        nextReviewDate: new Date().toISOString()
+      },
+      {
+        id: "fc-tab-6-8",
+        front: "Quanto é 6 x 8?",
+        back: "48 (Seis vezes oito ou oito vezes seis)",
+        box: 1,
+        nextReviewDate: new Date().toISOString()
+      },
+      {
+        id: "fc-tab-7-7",
+        front: "Quanto é 7 x 7?",
+        back: "49 (O quadrado perfeito de sete)",
+        box: 1,
+        nextReviewDate: new Date().toISOString()
+      },
+      {
+        id: "fc-tab-7-8",
+        front: "Quanto é 7 x 8?",
+        back: "56 (Dica fácil de lembrar: sequência 5, 6, 7, 8 -> 56 é igual a 7 x 8!)",
+        box: 1,
+        nextReviewDate: new Date().toISOString()
+      },
+      {
+        id: "fc-tab-8-8",
+        front: "Quanto é 8 x 8?",
+        back: "64 (Dica: o dobro de 8 x 4, que é 32)",
+        box: 1,
+        nextReviewDate: new Date().toISOString()
+      },
+      {
+        id: "fc-tab-9-6",
+        front: "Quanto é 9 x 6?",
+        back: "54 (Dica do 9: dezenas é 6 - 1 = 5. Unidades é o que falta de 5 para 9, que é 4. Total: 54)",
+        box: 1,
+        nextReviewDate: new Date().toISOString()
+      },
+      {
+        id: "fc-tab-9-8",
+        front: "Quanto é 9 x 8?",
+        back: "72 (Dica do 9: dezenas 7, unidades 2. Soma = 9)",
+        box: 1,
+        nextReviewDate: new Date().toISOString()
+      },
+      {
+        id: "fc-tab-10-9",
+        front: "Quanto é 10 x 9?",
+        back: "90 (Dica: adicione o zero ao 9)",
+        box: 1,
+        nextReviewDate: new Date().toISOString()
+      },
+      {
+        id: "fc-tab-3-8",
+        front: "Quanto é 3 x 8?",
+        back: "24",
+        box: 1,
+        nextReviewDate: new Date().toISOString()
+      },
+      {
+        id: "fc-tab-6-7",
+        front: "Quanto é 6 x 7?",
+        back: "42",
+        box: 1,
+        nextReviewDate: new Date().toISOString()
+      },
+      {
+        id: "fc-tab-8-9",
+        front: "Quanto é 8 x 9?",
+        back: "72 (Dica comutativa: o mesmo que 9 x 8)",
         box: 1,
         nextReviewDate: new Date().toISOString()
       }
     ],
     quiz: [
       {
-        question: "Qual é o principal benefício de usar o sistema de Flashcards com Caixas (Leitner) do EstudaIA?",
+        question: "Se uma caixa de lápis de cor contém 6 unidades, quantos lápis haverá no total em 7 caixas iguais?",
         options: [
-          "Evitar ler qualquer tipo de matéria ou explicação",
-          "Otimizar o tempo de estudo, repetindo mais os cartões difíceis e espaçando os fáceis",
-          "Ganhar prêmios em dinheiro convertidos de pontos virtuais",
-          "Apenas colorir os cartões para decoração visual"
+          "36 lápis",
+          "42 lápis",
+          "48 lápis",
+          "40 lápis"
         ],
         correctOptionIndex: 1,
-        explanation: "O método das Caixas de Leitner garante que você passe mais tempo revisando o que tem dificuldade de lembrar, enquanto os tópicos conhecidos são espaçados para o futuro, poupando seu tempo!"
+        explanation: "Pela tabuada, 6 caixas x 7 unidades por caixa = 42 unidades no total (6 x 7 = 42)."
       },
       {
-        question: "Como você pode carregar ou salvar dados caso precise trocar de computador?",
+        question: "Usando a técnica da tabuada do 9, qual é o resultado correto de 9 x 7?",
         options: [
-          "O site não permite salvar nenhum dado de nenhuma forma",
-          "Imprimir todas as telas em papel e digitá-las de novo manualmente",
-          "Usar as opções de 'Exportar' e 'Importar' na barra lateral para salvar e restaurar arquivos JSON",
-          "O site exige a digitação de dados em cartões físicos reais"
+          "56",
+          "63",
+          "72",
+          "81"
         ],
-        correctOptionIndex: 2,
-        explanation: "O EstudaIA possui um prático painel de backup que permite que você baixe seu arquivo JSON de backup (Exportar) e carregue-o novamente em qualquer navegador ou celular (Importar)!"
+        correctOptionIndex: 1,
+        explanation: "Para 9 x 7, o algarismo das dezenas é 7 - 1 = 6. O algarismo das unidades é o que falta para somar 9 (9 - 6 = 3). O resultado é 63."
+      },
+      {
+        question: "Qual propriedade da matemática nos permite saber que 8 x 6 dá exatamente o mesmo resultado que 6 x 8?",
+        options: [
+          "Propriedade Associativa",
+          "Propriedade Comutativa",
+          "Propriedade Distributiva",
+          "Elemento Neutro"
+        ],
+        correctOptionIndex: 1,
+        explanation: "A propriedade comutativa afirma que a ordem dos fatores não altera o produto (a x b = b x a). Assim, 8 x 6 = 6 x 8 = 48."
       }
     ],
     discursiveQuestions: [
       {
-        question: "Explique como o 'Plano de Estudos Inteligente' do EstudaIA ajuda você a regular sua rotina.",
-        suggestedAnswer: "O Plano de Estudos monitora ativamente as respostas incorretas nos Quizzes. Ele exibe as matérias mais vulneráveis como 'Prioridades de Foco' e recomenda ações diretas com os cadernos salvos, garantindo que você gaste tempo nos seus pontos fracos e não apenas estudando o que já domina."
+        question: "Como você explicaria a um colega como fazer de cabeça a conta de '4 x 8' utilizando a técnica do 'dobro do dobro'?",
+        suggestedAnswer: "Para multiplicar por 4, podemos multiplicar primeiro por 2 (achar o dobro) e depois multiplicar por 2 de novo (dobrar novamente). No caso de 4 x 8: o dobro de 8 é 16, e o dobro de 16 é 32. Logo, 4 x 8 = 32."
       }
     ],
     challenges: [
       {
-        question: "Qual técnica pedagógica fundamenta o uso simultâneo de mapas conceituais e testes de recordação ativa (Active Recall) na fixação de longa duração?",
+        question: "Um fazendeiro organizou seu pomar em 8 fileiras de árvores. Se cada fileira contém exatamente 9 laranjeiras, quantas laranjeiras há no pomar?",
         options: [
-          "Apenas memorização mecânica por cópia de textos repetidos",
-          "A visão espacial estruturada criada pelo mapa mental aliada ao fortalecimento neural gerado pelas respostas ativas",
-          "O relaxamento do cérebro gerado por diagramas de cores neutras",
-          "Ouvir áudio binaural em baixa velocidade"
+          "56 laranjeiras",
+          "64 laranjeiras",
+          "72 laranjeiras",
+          "81 laranjeiras"
         ],
-        correctOptionIndex: 1,
-        explanation: "A combinação de mapas de conexões (que estruturam o conteúdo na mente) com o recall ativo (quizzes e flashcards) estimula os hemisférios lógicos e visuais, consolidando as sinapses de forma duradoura."
+        correctOptionIndex: 2,
+        explanation: "Multiplicamos o número de fileiras pelo número de árvores por fileira: 8 x 9 = 72 laranjeiras."
       }
     ],
     enemQuestions: [
       {
-        question: "As metodologias ativas digitais trouxeram inovações relevantes para a rotina escolar, transformando o aprendizado passivo em uma jornada personalizada. Ferramentas que geram revisões adaptativas baseadas em erros, de acordo com as premissas modernas de educação, buscam principalmente promover:",
+        question: "Uma distribuidora de livros embala seus produtos em fardos. Cada fardo contém 8 pacotes menores, e cada pacote menor contém 8 livros. Um caminhão transporta 5 fardos dessa distribuidora. O total de livros transportados por esse caminhão é:",
         options: [
-          "A eliminação de provas e avaliações nos colégios públicos",
-          "O protagonismo e a autonomia do estudante através do diagnóstico contínuo de suas próprias facilidades e gargalos",
-          "O entretenimento passivo com o objetivo de reter a atenção e estender o uso de telas",
-          "A substituição total de professores humanos por sistemas computadorizados rígidos"
+          "64 livros",
+          "128 livros",
+          "320 livros",
+          "400 livros"
         ],
-        correctOptionIndex: 1,
-        explanation: "A autoavaliação contínua pautada em dados permite que o estudante regule seu próprio aprendizado (metacognição), focando com autonomia no que precisa para atingir a proficiência."
+        correctOptionIndex: 2,
+        explanation: "Primeiro, calculamos os livros por fardo: 8 pacotes x 8 livros = 64 livros. Como são 5 fardos, calculamos: 5 x 64 = 320 livros."
       }
     ],
     diagrams: [
       {
-        title: "Ciclo de Estudo Ativo",
-        diagramAscii: `  [Passo 1: Criar Caderno]
-                 |
-                 v
-     [Passo 2: Praticar Ativo] <------+
-          /            \\              |
-         v              v             | (Refocar nos
-    [Flashcards]   [Quizzes/ENEM]     |  erros mapeados)
-         \\              /             |
-          v            v              |
-       [Plano de Estudos Inteligente]-+`,
-        description: "Este diagrama mostra como o EstudaIA fecha o círculo do seu aprendizado. Ao registrar seus erros em quizzes, o Plano de Estudos guia você de volta aos pontos fracos para consolidação."
+        title: "Mapa de Padrões das Tabuadas",
+        diagramAscii: `  [Número de Entrada]
+           |
+           +---> Multiplicar por 2: Dobro imediato (ex: 7 -> 14)
+           |
+           +---> Multiplicar por 4: Dobro do dobro (ex: 7 -> 14 -> 28)
+           |
+           +---> Multiplicar por 8: Dobro do dobro do dobro (ex: 7 -> 14 -> 28 -> 56)
+           |
+           +---> Multiplicar por 5: Metade da tabuada do 10 (ex: 7 x 10 = 70 -> Metade = 35)`,
+        description: "Enxergar a tabuada como conexões de dobras e metades ajuda o cérebro a calcular muito mais rápido do que decorar de forma isolada."
       }
     ],
     curiosities: [
-      "Você sabia que o cérebro esquece cerca de 50% de tudo o que lê em apenas 24 horas se não houver um teste de recordação ativa? Esse fenômeno biológico chama-se 'Curva do Esquecimento'.",
-      "Explicar uma matéria para si mesmo ou para outra pessoa (Técnica de Feynman) aumenta a retenção de aprendizado para até 90%!"
+      "Você sabia que pode resolver a tabuada do 9 usando as mãos? Estenda as duas mãos, numere os dedos de 1 a 10 da esquerda para a direita. Para multiplicar 9 por 4, dobre o dedo 4. À esquerda do dedo dobrado sobram 3 dedos (dezenas), e à direita sobram 6 dedos (unidades). O resultado é 36!",
+      "A tabuada de dupla entrada (a tabela que cruza linhas e colunas) é conhecida como Tabela de Pitágoras em homenagem ao grande filósofo grego Pitágoras, que a organizou para facilitar os cálculos de seus discípulos há mais de 2.500 anos."
     ],
     practicalExamples: [
-      "Prática Rápida de 5 Minutos: Ao acordar ou iniciar o dia, faça 5 a 10 flashcards rápidos de revisões pendentes para fortalecer as memórias.",
-      "Tire Dúvidas Ativas: Se você não entender um conceito em um caderno, abra o 'Professor Virtual' e peça para ele explicar usando uma metáfora do cotidiano."
+      "Compras rápidas: Se um chocolate custa R$ 6 e você deseja comprar 8 unidades, você calcula mentalmente 6 x 8 = R$ 48 para pagar no caixa.",
+      "Planejamento diário: Se você estuda 3 horas por dia de segunda a sexta (5 dias), você estuda no total 3 x 5 = 15 horas semanais."
     ],
-    tags: ["boas-vindas", "onboarding", "como-estudar", "tutorial"],
-    folder: "Guia de Boas-Vindas",
+    tags: ["matematica-basica", "tabuada", "calculo-mental", "multiplicacao"],
+    folder: "Matemática Básica",
     isFavorite: true,
     reviewCount: 0
   }

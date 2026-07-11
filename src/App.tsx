@@ -98,7 +98,7 @@ export default function App() {
     takeQuiz: boolean;
     chatProfessor: boolean;
   }>(() => {
-    const saved = localStorage.getItem("estudaia_onboarding_v4");
+    const saved = localStorage.getItem("estudaia_onboarding_v5");
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -116,27 +116,52 @@ export default function App() {
     setOnboarding(prev => {
       if (prev[taskKey]) return prev;
       const updated = { ...prev, [taskKey]: true };
-      localStorage.setItem("estudaia_onboarding_v4", JSON.stringify(updated));
+      localStorage.setItem("estudaia_onboarding_v5", JSON.stringify(updated));
       return updated;
     });
   };
 
   // Load from LocalStorage
   useEffect(() => {
-    let savedNotes = localStorage.getItem("estudaia_notes_v4");
-    let savedStats = localStorage.getItem("estudaia_stats_v4");
+    let savedNotes = localStorage.getItem("estudaia_notes_v5");
+    let savedStats = localStorage.getItem("estudaia_stats_v5");
 
     // Migration / backward compatibility check for previous version keys
     if (!savedNotes) {
-      savedNotes = localStorage.getItem("estudaia_notes_v3") || 
-                   localStorage.getItem("estudaia_notes_v2") || 
-                   localStorage.getItem("estudaia_notes_v1") || 
-                   localStorage.getItem("estudaia_notes") ||
-                   localStorage.getItem("study_notes") ||
-                   localStorage.getItem("notes");
+      const v4NotesStr = localStorage.getItem("estudaia_notes_v4") || 
+                         localStorage.getItem("estudaia_notes_v3") || 
+                         localStorage.getItem("estudaia_notes_v2") || 
+                         localStorage.getItem("estudaia_notes_v1") || 
+                         localStorage.getItem("estudaia_notes") ||
+                         localStorage.getItem("study_notes") ||
+                         localStorage.getItem("notes");
+      if (v4NotesStr) {
+        try {
+          let parsed: StudyNote[] = JSON.parse(v4NotesStr);
+          // Replace "note-primeiros-passos" with the new tabuada note, keeping other user notebooks
+          const hasPrimeirosPassos = parsed.some(n => n.id === "note-primeiros-passos");
+          if (hasPrimeirosPassos) {
+            parsed = parsed.filter(n => n.id !== "note-primeiros-passos");
+            if (!parsed.some(n => n.id === "note-tabuada-1-ao-10")) {
+              parsed.unshift(INITIAL_NOTES[0]);
+            }
+          } else {
+            if (parsed.length === 0) {
+              parsed = INITIAL_NOTES;
+            } else if (!parsed.some(n => n.id === "note-tabuada-1-ao-10")) {
+              parsed.unshift(INITIAL_NOTES[0]);
+            }
+          }
+          savedNotes = JSON.stringify(parsed);
+        } catch (e) {
+          savedNotes = JSON.stringify(INITIAL_NOTES);
+        }
+      }
     }
+
     if (!savedStats) {
-      savedStats = localStorage.getItem("estudaia_stats_v3") || 
+      savedStats = localStorage.getItem("estudaia_stats_v4") ||
+                   localStorage.getItem("estudaia_stats_v3") || 
                    localStorage.getItem("estudaia_stats_v2") || 
                    localStorage.getItem("estudaia_stats_v1") || 
                    localStorage.getItem("estudaia_stats") ||
@@ -147,42 +172,42 @@ export default function App() {
       try {
         const parsedNotes = JSON.parse(savedNotes);
         setNotes(parsedNotes);
-        // Guarantee synchronization with the current storage key v4
-        localStorage.setItem("estudaia_notes_v4", JSON.stringify(parsedNotes));
+        // Guarantee synchronization with the current storage key v5
+        localStorage.setItem("estudaia_notes_v5", JSON.stringify(parsedNotes));
       } catch (e) {
         console.error("Erro ao carregar notas do localStorage", e);
         setNotes(INITIAL_NOTES);
       }
     } else {
       setNotes(INITIAL_NOTES);
-      localStorage.setItem("estudaia_notes_v4", JSON.stringify(INITIAL_NOTES));
+      localStorage.setItem("estudaia_notes_v5", JSON.stringify(INITIAL_NOTES));
     }
 
     if (savedStats) {
       try {
         const parsedStats = JSON.parse(savedStats);
         setStats(parsedStats);
-        // Guarantee synchronization with the current storage key v4
-        localStorage.setItem("estudaia_stats_v4", JSON.stringify(parsedStats));
+        // Guarantee synchronization with the current storage key v5
+        localStorage.setItem("estudaia_stats_v5", JSON.stringify(parsedStats));
       } catch (e) {
         console.error("Erro ao carregar estatísticas do localStorage", e);
         setStats(INITIAL_STATS);
       }
     } else {
       setStats(INITIAL_STATS);
-      localStorage.setItem("estudaia_stats_v4", JSON.stringify(INITIAL_STATS));
+      localStorage.setItem("estudaia_stats_v5", JSON.stringify(INITIAL_STATS));
     }
   }, []);
 
   // Sync back to local storage
   const syncNotes = (updatedNotes: StudyNote[]) => {
     setNotes(updatedNotes);
-    localStorage.setItem("estudaia_notes_v4", JSON.stringify(updatedNotes));
+    localStorage.setItem("estudaia_notes_v5", JSON.stringify(updatedNotes));
   };
 
   const syncStats = (updatedStats: UserStats) => {
     setStats(updatedStats);
-    localStorage.setItem("estudaia_stats_v4", JSON.stringify(updatedStats));
+    localStorage.setItem("estudaia_stats_v5", JSON.stringify(updatedStats));
   };
 
   // Export backup JSON
@@ -225,7 +250,7 @@ export default function App() {
           }
           if (parsed.onboarding) {
             setOnboarding(parsed.onboarding);
-            localStorage.setItem("estudaia_onboarding_v4", JSON.stringify(parsed.onboarding));
+            localStorage.setItem("estudaia_onboarding_v5", JSON.stringify(parsed.onboarding));
           }
           showToast("Progresso importado do arquivo .json com sucesso!", "success");
         } else {
@@ -283,7 +308,7 @@ export default function App() {
         }
         if (parsed.onboarding) {
           setOnboarding(parsed.onboarding);
-          localStorage.setItem("estudaia_onboarding_v4", JSON.stringify(parsed.onboarding));
+          localStorage.setItem("estudaia_onboarding_v5", JSON.stringify(parsed.onboarding));
         }
         showToast("Progresso restaurado com sucesso através do código!", "success");
         setPasteInputCode("");
@@ -318,7 +343,7 @@ export default function App() {
       chatProfessor: false,
     };
     setOnboarding(cleanOnboarding);
-    localStorage.setItem("estudaia_onboarding_v4", JSON.stringify(cleanOnboarding));
+    localStorage.setItem("estudaia_onboarding_v5", JSON.stringify(cleanOnboarding));
     
     setSelectedNoteId(null);
     showToast("Todo o progresso local foi limpo e apagado.", "info");
@@ -336,7 +361,7 @@ export default function App() {
       chatProfessor: false,
     };
     setOnboarding(cleanOnboarding);
-    localStorage.setItem("estudaia_onboarding_v4", JSON.stringify(cleanOnboarding));
+    localStorage.setItem("estudaia_onboarding_v5", JSON.stringify(cleanOnboarding));
 
     setSelectedNoteId(null);
     showToast("Cadernos e estatísticas padrão recarregados com sucesso!", "success");
